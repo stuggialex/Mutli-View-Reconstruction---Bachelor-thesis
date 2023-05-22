@@ -31,3 +31,4 @@ def srdf(x, camera, dmaps):
     #distance to surface D
 
     #calculate signed distance
+    return

@@ -1,4 +1,15 @@
 import json
+from mpl_toolkits import mplot3d
+
+%matplotlib inline
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+fig = plt.figure()
+ax = plt.axes(projection='3d')
+
+
 
 """
 Simple raycasting
@@ -35,4 +46,9 @@ def get_camera_origin(camera):
         arr.append(camera[x][3])
     return arr
 
-#print(get_camera_origin(get_camera()))
+print(get_camera())
+
+def visualize_camera(camera):
+    x = camera[0][3]
+    y = camera[1][3]
+    z = camera[2][3]
