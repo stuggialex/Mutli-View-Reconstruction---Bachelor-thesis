@@ -105,7 +105,7 @@ camera_data, camera_angle_x = get_camera_data()
 for n in range(5):
     camera = camera_data[n]['transform_matrix']
     intrinsic = calculate_intrinsic(camera_angle_x)
-    #visualize_rays(intrinsic[0][0], camera)
+    visualize_rays(intrinsic[0][0], camera)
     visualize_camera(torch.tensor(camera))
 
 # Set the labels of the axes
