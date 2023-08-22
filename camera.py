@@ -3,7 +3,7 @@ import torch
 import numpy as np
 
 class Camera:
-#test
+
     def __init__(self):
         IMG_HEIGHT = 800
         IMG_WIDTH = 800
@@ -29,11 +29,7 @@ class Camera:
          group = []
          for element in self.poses:
               if np.dot(self.poses[0],element)>0.75:
-                   pass group.append(element)
+                    group.append(element)
     
     def get_n_closest_cameras(idx, num_cam):
-        pass   
-
-c = Camera()
-
-print(c.intrinsic)
+        pass
