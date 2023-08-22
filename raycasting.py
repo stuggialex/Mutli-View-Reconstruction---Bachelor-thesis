@@ -6,6 +6,23 @@ from mpl_toolkits import mplot3d
 import numpy as np
 import matplotlib.pyplot as plt
 
+import os
+os.environ["OPENCV_IO_ENABLE_OPENEXR"]="1"
+import cv2
+import imageio
+
+#test = imageio.imread("0.exr")
+
+#test = cv2.imread("0.exr",  cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH) 
+#cv2.imshow('exr', test[:,:,0])
+#print(test) 
+
+#f = plt.figure()
+#ax = f.add_subplot()
+#ax.imshow(test[:, :, 0])
+#plt.show()
+
+
 fig = plt.figure()
 ax = fig.add_subplot(projection='3d')
 
@@ -48,7 +65,7 @@ def calculate_viewing_direction(camera_view):
         camera_view:3x3 tensor
 
     Returns:
-        3x3 tensor
+        1x3 tensor
     """
 
     null_vec = torch.tensor([0, 0, 1], dtype=torch.float32)
@@ -82,6 +99,7 @@ def get_rays_np(H, W, focal, c2w):
     """
     Get ray origins, directions from a pinhole camera.
     """
+    c2w = torch.tensor(c2w).numpy()
     i, j = np.meshgrid(np.arange(W, dtype=np.float32),
                        np.arange(H, dtype=np.float32), indexing='xy')
     dirs = np.stack([(i-W*.5)/focal, -(j-H*.5)/focal, -np.ones_like(i)], -1)
@@ -89,29 +107,36 @@ def get_rays_np(H, W, focal, c2w):
     rays_o = np.broadcast_to(c2w[:3, -1], np.shape(rays_d))
     return rays_o, rays_d
 
-def visualize_rays(focal, c2w):
+def visualize_rays(rays_o, rays_d):
     """
     Args:
     focal length of the camera
     transformation matrix of the camera
     """
-    rays_o, rays_d = get_rays_np(IMG_HEIGHT, IMG_WIDTH, focal, torch.tensor(c2w).numpy())
-    for m in range(1, 801,100):
-        for n in range(1, 801,100):
+    for m in range(1, 800,100):
+        for n in range(1, 800,100):
             ax.quiver(rays_o[m][n][0], rays_o[m][n][1], rays_o[m][n][2], rays_d[m][n][0], rays_d[m][n][1], rays_d[m][n][2], length=5, normalize=True)
 
-
-camera_data, camera_angle_x = get_camera_data()
-for n in range(5):
+def plot(n):
+    camera_data, camera_angle_x = get_camera_data()
     camera = camera_data[n]['transform_matrix']
     intrinsic = calculate_intrinsic(camera_angle_x)
-    visualize_rays(intrinsic[0][0], camera)
+    rays_o, rays_d = get_rays_np(IMG_WIDTH, IMG_HEIGHT, intrinsic[0][0], camera)
+    #visualize_rays(rays_o, rays_d)
     visualize_camera(torch.tensor(camera))
 
+for x in range(1):
+    plot(x)
+#plot(1)
+#plot(100)
+#plot(110)
+#plot(129)
+#plot(136)
+#plot(132)
 # Set the labels of the axes
 ax.set_xlabel('X')
-ax.set_ylabel('Y')
-ax.set_zlabel('Z')
+ax.set_ylabel('Z')
+ax.set_zlabel('Y')
 
 # Set the x, y, and z limits
 ax.set_xlim(-4, 4)
