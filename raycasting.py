@@ -117,6 +117,10 @@ def visualize_rays(rays_o, rays_d):
         for n in range(1, 800,100):
             ax.quiver(rays_o[m][n][0], rays_o[m][n][1], rays_o[m][n][2], rays_d[m][n][0], rays_d[m][n][1], rays_d[m][n][2], length=5, normalize=True)
 
+def raysampling(ray):
+    #maybe combine it together with SRDF
+    pass
+
 def plot(n):
     camera_data, camera_angle_x = get_camera_data()
     camera = camera_data[n]['transform_matrix']
