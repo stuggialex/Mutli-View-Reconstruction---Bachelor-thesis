@@ -33,3 +33,14 @@ class Camera:
     
     def get_n_closest_cameras(idx, num_cam):
         pass
+
+class Image:
+     #must contain the images and later the corresponding depth maps aswell
+     def __init__(self):
+          pass
+     
+     def getdepthmaps(self):
+          pass
+     
+     def updatedepthmaps(self):
+          pass
