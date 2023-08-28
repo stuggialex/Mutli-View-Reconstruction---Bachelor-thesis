@@ -117,9 +117,26 @@ def visualize_rays(rays_o, rays_d):
         for n in range(1, 800,100):
             ax.quiver(rays_o[m][n][0], rays_o[m][n][1], rays_o[m][n][2], rays_d[m][n][0], rays_d[m][n][1], rays_d[m][n][2], length=5, normalize=True)
 
-def raysampling(ray):
+def raysampling(ray, origin, samp_intervall, samp_times):
+
     #maybe combine it together with SRDF
-    pass
+    #calculate point to sample on the ray
+    """
+    Args:
+    ray: direction of the ray
+    origin: origin of the camera/ray
+    samp_intervall: float, spacing between sampling points
+    samp_times: int, determines how often a point gets sampled on the ray
+    """
+    samp_arr = []
+    for x in range(samp_times):
+        if len(samp_arr) == 0:
+            samp_arr.append(origin)
+        else:
+            samp_arr.append(ray * samp_intervall + samp_arr[-1])
+    return samp_arr
+
+
 
 def plot(n):
     camera_data, camera_angle_x = get_camera_data()
@@ -129,14 +146,15 @@ def plot(n):
     #visualize_rays(rays_o, rays_d)
     visualize_camera(torch.tensor(camera))
 
+"""
 for x in range(1):
     plot(x)
-#plot(1)
-#plot(100)
-#plot(110)
-#plot(129)
-#plot(136)
-#plot(132)
+plot(1)
+plot(100)
+plot(110)
+plot(129)
+plot(136)
+plot(132)
 # Set the labels of the axes
 ax.set_xlabel('X')
 ax.set_ylabel('Z')
@@ -147,3 +165,4 @@ ax.set_xlim(-4, 4)
 ax.set_ylim(-4, 4)
 ax.set_zlim(-4, 4)
 plt.show()
+"""
