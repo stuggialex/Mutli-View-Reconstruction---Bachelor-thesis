@@ -24,6 +24,7 @@ Returns:
     srdf: (Menge von Vektoren) signed distances to the cameras from the 
           depth maps
 """
+#maybe needs a check if srdf gets negative, then we dont have to sample further
 def srdf(x, camera, dmaps):
     #calculate the distance between camera and point Z
 
@@ -31,4 +32,27 @@ def srdf(x, camera, dmaps):
     #distance to surface D
 
     #calculate signed distance
-    return
+    z = x - camera
+    srdf = dmaps - z
+    return srdf
+"""
+helper function to check if all the elements in a list are the same 
+"""
+def check_list__elements_identical(list):
+   return list.count(list[0]) == len(list)
+
+"""
+checks if the cameras sampling the same point are on a surface or not
+
+Args:
+    cameras: an array of cameras(selected through the group function)
+"""
+#with this function sample some points and check if the sum is the lowest
+def check_surface(cameras, sampled_point, dmaps):
+    srdfs = []
+    relative_srdfs = []
+    for camera in cameras:
+        srdfs.append(srdf(sampled_point, camera, dmaps))
+    for srdf in srdfs:
+        relative_srdfs.append(srdf - srdfs[0])
+    return sum(relative_srdfs)
