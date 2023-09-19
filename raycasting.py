@@ -67,7 +67,7 @@ def calculate_viewing_direction(camera_view):
     Returns:
         1x3 tensor
     """
-
+    camera_view = get_rotation_matrix(camera_view)
     null_vec = torch.tensor([0, 0, 1], dtype=torch.float32)
     return torch.matmul(get_rotation_matrix(camera_view), null_vec * -1)
 
