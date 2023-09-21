@@ -2,6 +2,7 @@ import json
 import torch
 import numpy as np
 import torch
+import matplotlib.pyplot as plt
 from raycasting import calculate_viewing_direction
 
 class Camera:
@@ -33,26 +34,28 @@ class Camera:
               if np.dot(self.poses[0],element)>0.75:
                     group.append(element)
 
-     def get_ordered_list_cameras(self, idx):
-          # TODO: order the list
-          cam = self.__getitem__(idx)
+     """
+     orders a list in ascending order. The function picks a camera and checks the dot product between other cameras while ordering it 
+     """
+     def get_ordered_dotproduct_list_cameras(self, idx):
           count = 0
-          ordered_list = torch.Tensor()
+          dprod_list = torch.Tensor()
           viewing_dir = calculate_viewing_direction(self.poses[idx])
-          for pose in cam.poses:
+          for pose in self.poses:
                if count != idx:
-                    np.dot(viewing_dir, pose)
+                    n_cameras = calculate_viewing_direction(pose)
+                    dotproduct = np.dot(viewing_dir, n_cameras)
                     #we save the idx first and after that the dot product
-                    ordered_list = torch.stack((ordered_list, [count, np.dot]))
-
+                    ordered_list = torch.stack((ordered_list, [count, dotproduct]))
+                    count+= 1
                     #index has to come with this list, otherwise its hard to see
                     #which camera the value belongs to
                     #i can use the "get group" function, it kinda calculates
                     #the dot product, or i can rename it
-          return ordered_list
+          return torch.sort(dprod_list, dim=1)
                
      def get_n_closest_cameras(self, idx, num_cam):
-          ordered_list = self.get_ordered_list_cameras(idx)
+          ordered_list = self.get_ordered_dotproduct_list_cameras(idx)
           return ordered_list[:num_cam]
 
           #calculate viewing direction compare it with others
@@ -66,10 +69,15 @@ class Camera:
 class Image:
      #must contain the images and later the corresponding depth maps aswell
      def __init__(self):
-          pass
-     
-     def getdepthmaps(self):
-          pass
+          self.imgs = []
+          self.dmaps = []
+
+          #dummy -> select fitting images and hardcode it into the array
+          arr = [1, 2, 5, 7]
+          for x in arr:
+               #if this doesnt work, try using tensors
+               self.imgs.append(plt.imread("Images/img/" + x + ".jpg")) #insert image path
+               self.dmaps.append(plt.imread("Images/dmaps/" + x + ".jpg")) 
      
      def updatedepthmaps(self):
           pass
