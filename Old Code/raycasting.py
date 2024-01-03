@@ -9,13 +9,9 @@ import matplotlib.pyplot as plt
 import os
 os.environ["OPENCV_IO_ENABLE_OPENEXR"]="1"
 import cv2
-import imageio
 
-#test = imageio.imread("0.exr")
-
-#test = cv2.imread("0.exr",  cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH) 
-#cv2.imshow('exr', test[:,:,0])
-#print(test) 
+#test = cv2.imread("Images/omni_depth/23.exr",  cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH) 
+#test = cv2.cvtColor(test, cv2.COLOR_BGR2RGB)
 
 #f = plt.figure()
 #ax = f.add_subplot()
@@ -56,7 +52,7 @@ def get_camera_data ():
 def get_rotation_matrix(camera):
     return camera[:3, :3]
 
-def calculate_viewing_direction(camera_view):
+def no_calculate_viewing_direction(camera_view):
     """
     Calculates the viewing direction of a camera
     with matrix multiplication 
@@ -79,7 +75,7 @@ def visualize_camera(camera):
     x = camera[0][3]
     y = camera[1][3]
     z = camera[2][3]
-    u, v, w = calculate_viewing_direction(camera)
+    u, v, w = no_calculate_viewing_direction(camera)
     ax.quiver(x, y, z, u, v, w, length=2, normalize=True)
     
 
@@ -118,13 +114,12 @@ def visualize_rays(rays_o, rays_d):
             ax.quiver(rays_o[m][n][0], rays_o[m][n][1], rays_o[m][n][2], rays_d[m][n][0], rays_d[m][n][1], rays_d[m][n][2], length=5, normalize=True)
 
 def raysampling(ray, origin, samp_intervall, samp_times):
-
     #maybe combine it together with SRDF
     #calculate point to sample on the ray
     """
     Args:
-    ray: direction of the ray
-    origin: origin of the camera/ray
+    ray: normed direction of the ray
+    origin: origin of the camera/ray, should be a 3d point
     samp_intervall: float, spacing between sampling points
     samp_times: int, determines how often a point gets sampled on the ray
     """
@@ -145,6 +140,26 @@ def plot(n):
     rays_o, rays_d = get_rays_np(IMG_WIDTH, IMG_HEIGHT, intrinsic[0][0], camera)
     #visualize_rays(rays_o, rays_d)
     visualize_camera(torch.tensor(camera))
+
+def test_plot(rays_o, rays_d):
+    for m, rows in enumerate(rays_d):
+        for n, point in enumerate(rows):
+            if m == 2:
+                break
+            ax.quiver(rays_o[m][n][0], rays_o[m][n][1], rays_o[m][n][2], rays_d[m][n][0], rays_d[m][n][1], rays_d[m][n][2], length=5, normalize=True)
+        if m == 2:
+            break
+    # Set the labels of the axes
+    ax.set_xlabel('X')
+    ax.set_ylabel('Z')
+    ax.set_zlabel('Y')
+
+    # Set the x, y, and z limits
+    ax.set_xlim(-4, 4)
+    ax.set_ylim(-4, 4)
+    ax.set_zlim(-4, 4)
+    plt.show()
+
 
 """
 for x in range(1):

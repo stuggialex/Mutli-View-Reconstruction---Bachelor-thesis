@@ -1,8 +1,16 @@
-import torch    
+import torch
+import torchvision    
 import numpy
 import shutil
 import os
 import cv2
+
+def gaussian_blur(dmaps):
+    gauss = torchvision.transforms.GaussianBlur(21, sigma=0.5)
+    for _ in range(4):
+        dmaps = gauss(dmaps)
+    return dmaps
+        
 
 def calc_viewing_direction(extrinsic):
         viewing_matrix = extrinsic[:3, :3]
@@ -59,17 +67,20 @@ def apply_mask(image, mask):
     return masked_output
 
 #divider equals to the row number
-def get_random_depth_map_values(depthmap,sampling_amount,divider):
+def get_random_dmap_point_batch(depthmap,sampling_amount,divider):
     #flatten the tensor and get a random item out of it
     t = torch.flatten(depthmap)
     idx = torch.multinomial(t,sampling_amount)
-    idx_list = []
-    for item in idx:
+    for item in idx:  
         column_row_tuple = divmod(item.item(), divider)
         #get depth map value out of the received index from multinomial
-        depth_value = depthmap[column_row_tuple[0]][column_row_tuple[1]]
-        idx_list.append((column_row_tuple, depth_value))
-    return idx_list
+        #depth_value = depthmap[column_row_tuple[0]][column_row_tuple[1]]
+        point_tensor = torch.tensor([[column_row_tuple[0],column_row_tuple[1]]])
+        if 'point_batch' in locals():
+            point_batch = torch.cat((point_batch, point_tensor))
+        else:
+             point_batch = point_tensor
+    return point_batch
 
 def calculate_point_with_depth_value(origin, ray_vector, depth):
     return origin + ray_vector * depth

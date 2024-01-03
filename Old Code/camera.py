@@ -4,29 +4,34 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 from raycasting import calculate_viewing_direction
+import os
+os.environ["OPENCV_IO_ENABLE_OPENEXR"]="1"
+import cv2
 
 class Camera:
 
      def __init__(self):
-        IMG_HEIGHT = 800
-        IMG_WIDTH = 800
-        RATIO = IMG_WIDTH / IMG_HEIGHT
+        self.IMG_HEIGHT = 800
+        self.IMG_WIDTH = 800
+        self.RATIO = self.IMG_WIDTH / self.IMG_HEIGHT
         with open("quadrants.json", "r") as read_file:
           self.json = json.load(read_file)
         self.poses = []
         for frame in self.json['frames']:
              self.poses.append(frame['transform_matrix'])
-        camera_angle_x = self.json['camera_angle_x']
-        camera_angle_y = RATIO * camera_angle_x
+        self.camera_angle_x = self.json['camera_angle_x']
+        self.camera_angle_y = self.RATIO * self.camera_angle_x
         self.intrinsic = torch.tensor(np.zeros(shape=(3, 3), dtype=np.float32))
-        focal_x = (IMG_WIDTH / 2) / np.tan(camera_angle_x / 2)
-        focal_y = (IMG_HEIGHT / 2) / np.tan(camera_angle_y / 2)
+        focal_x = (self.IMG_WIDTH / 2) / np.tan(self.camera_angle_x / 2)
+        focal_y = (self.IMG_HEIGHT / 2) / np.tan(self.camera_angle_y / 2)
         self.intrinsic[0][0] = focal_x
         self.intrinsic[1][1] = focal_y
         self.intrinsic[2][2] = 1
 
+        self.length = len(self.poses)
+
      def  __getitem__(self, idx):
-          return idx, self.intrinsic, self.poses[idx]
+          return self.intrinsic, self.poses[idx]
     
      def get_group(self):
          group = []
@@ -73,14 +78,26 @@ class Image:
           self.dmaps = []
 
           #dummy -> select fitting images and hardcode it into the array
-          arr = [1, 2, 5, 7]
+          arr = [0, 1, 10, 23]
           for x in arr:
                #if this doesnt work, try using tensors
-               self.imgs.append(plt.imread("Images/img/" + x + ".jpg")) #insert image path
-               self.dmaps.append(plt.imread("Images/dmaps/" + x + ".jpg")) 
+               #self.imgs.append(plt.imread("Images/img/" + x + ".exr")) #insert image path
+               #img = cv2.imread("Images/imgs/" + str(x) + ".exr",  cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH) 
+               #img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+               #self.imgs.append(img) 
+
+               dmap = cv2.imread("Images/omni_depth/" + str(x) + ".exr",  cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH) 
+               dmap = cv2.cvtColor(dmap, cv2.COLOR_BGR2RGB)
+               self.dmaps.append(dmap) 
      
      def updatedepthmaps(self):
           pass
 
+     def depthmapfusion(self):
+          pass
+
 #test = Camera()
 #print(test.get_ordered_list_cameras(0))
+
+#test = Image()
+#print(test.dmaps[0][799][0])

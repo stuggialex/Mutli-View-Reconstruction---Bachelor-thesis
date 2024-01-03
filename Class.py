@@ -1,5 +1,6 @@
 import json
 import torch
+import torchvision
 import numpy as np
 
 import os
@@ -104,3 +105,4 @@ class Image:
                 column_row_tuple = divmod(item.item(), divider)
                 dmap[column_row_tuple[0]][column_row_tuple[1]] = 0
         return
+        
