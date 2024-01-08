@@ -83,7 +83,7 @@ def get_random_dmap_point_batch(depthmap,sampling_amount,divider):
     return point_batch
 
 def calculate_point_with_depth_value(origin, ray_vector, depth):
-    return origin + ray_vector * depth
+    return origin + ray_vector * depth[:,:,None]
 
 def calculate_vector_length_between_two_points(point_a, point_b):
     vector = point_a - point_b
@@ -95,6 +95,16 @@ def append_tensor(tensor, point=None):
     else:
         tensor = torch.unsqueeze(tensor, 0)
     return tensor
+
+def tensor_index_lookup(tensor, index_tensor, are_rays=False):
+    transposed_index_tensor = torch.transpose(index_tensor, 0, 1)
+    chosen_rows = torch.index_select(tensor, 0, transposed_index_tensor[0]) 
+    if (not are_rays):
+        values = torch.gather(chosen_rows, 1, transposed_index_tensor[1].unsqueeze(1))
+    else:
+        index_tensor_plus_ones = transposed_index_tensor[1].unsqueeze(1).unsqueeze(1) * torch.ones(3, dtype=int)
+        values = torch.gather(chosen_rows, 1, index_tensor_plus_ones)
+    return values
           
 
 def calculate_srdf(sampled_point, camera_origin, predicted_dmap_point):
