@@ -42,13 +42,21 @@ def raysampling(starting_point, normed_ray, samp_intervall, samp_times):
     return sampling_tensor
 
 def calculate_2d_point(point_3d, extrinsic, intrinsic):
-    tensor_one = torch.tensor([1])
+    if point_3d.shape is torch.Size([3]):
+        tensor_one = torch.tensor([1])
+    else:
+        tensor_one = torch.ones(point_3d.shape)
+        tensor_one = torch.narrow(tensor_one,-1,0,1)
+        tensor_one = torch.transpose(tensor_one, 0,-1)
+        point_3d = torch.transpose(point_3d, 0,-1)
     w2c = torch.linalg.inv(extrinsic)
     #turn point_3d homogeneous
     tensor_4d = torch.cat((point_3d, tensor_one)).float()
+    if point_3d.shape is not torch.Size([3]):
+        tensor_4d = torch.transpose(tensor_4d, 0,-1)
     point_camera = torch.matmul(w2c, tensor_4d)
-    point_image_homogeneous = torch.matmul(intrinsic, point_camera[:3])
-    point_image = point_image_homogeneous[:2] / point_image_homogeneous[2]
+    point_image_homogeneous = torch.matmul(intrinsic, torch.narrow(point_camera,-1,0,3))
+    point_image = torch.narrow(point_image_homogeneous,-1,0,2) / torch.narrow(point_image_homogeneous,-1,-1,1)
     point_image = torch.round(point_image)
     point_image = point_image.int()
     return point_image
