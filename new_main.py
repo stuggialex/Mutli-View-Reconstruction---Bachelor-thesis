@@ -71,14 +71,20 @@ def loop():
         #reset gradients
         adam.zero_grad()
 
-        #calculated with multinomial
+        #randomly selected points, that will be used for the pipeline, calculated with multinomial
         batch_sampled_dmap_points = srdf_helpers.get_random_dmap_point_batch(masked_output, DMAP_POINT_BATCH_SIZE, IMAGE_HEIGHT)
+
+        #corresponding depth map values to batch_sampled_dmap_points
         batch_dmap_values = srdf_helpers.tensor_index_lookup(dmap_of_chosen_camera, batch_sampled_dmap_points)
 
+        #corresponding ray vectors to batch_sampled_dmap_points
         batch_ray_vector = srdf_helpers.tensor_index_lookup(rays_d, batch_sampled_dmap_points, are_rays=True)
 
+
+        #resulting 3d point from the randomly selected batch_sampled_dmap_points
         predicted_point = srdf_helpers.calculate_point_with_depth_value(origin, batch_ray_vector, batch_dmap_values)
         
+        #tensor of points sampled around the predicted_point
         sampling_tensor = srdf_helpers.raysampling(predicted_point - HALF_SAMPLE_DISTANCE * batch_ray_vector, batch_ray_vector, SAMPLING_INTERVALL, SAMPLING_AMOUNT)
         
 
@@ -95,10 +101,10 @@ def loop():
             srdf_dmap = imageSet.dmaps[idx_camera]
             srdf_tensor = torch.ones(SAMPLING_AMOUNT)
 
-            transposed_sampling_tensor = torch.transpose(sampling_tensor,0,1)
+            #transposed_sampling_tensor = torch.transpose(sampling_tensor,0,1)
 
             point_2d =srdf_helpers.calculate_2d_point(sampling_tensor, srdf_extrinsic, srdf_intrinsic)
-
+            print(point_2d)
             return
 
             #check every point that has been sampled

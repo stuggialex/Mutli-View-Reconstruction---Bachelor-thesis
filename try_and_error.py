@@ -31,12 +31,12 @@ example_tensor_0 = torch.tensor([1,2,3])
 example_tensor_1 = torch.tensor([[0,1],[1,1]])
 example_tensor_1_transposed = torch.transpose(example_tensor_1, 0, 1)
 example_tensor_2 = torch.tensor([1,2,3,3,2,1])
-example_tensor_3 = torch.tensor([[1,2,3],[4,5,6],[7,8,9]])
+example_tensor_3 = torch.tensor([[1,2,3],[4,5,6],[7,8,9],[10,11,12],[13,14,15]])
 example_tensor_4 = torch.tensor([[[1,2,3],[4,5,6],[7,8,9]],[[90,3,3],[9,5,6],[7,5,9]]])
-example_tensor_5 = torch.rand(6,1,3)
+example_tensor_5 = torch.rand(6,3,4)
+example_tensor_6 = torch.rand(4,4)
 
-test = srdf_helpers.calculate_2d_point(example_tensor_3,torch.rand(4,4),torch.rand(3,3))
-print(test)
+print(torch.matmul(example_tensor_6,torch.transpose(example_tensor_5, -1, -2)).shape)
 
 # a,b,c = 800, 800, 3
 # t = torch.arange(a*b*c).view(a, b, c)
