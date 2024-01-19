@@ -34,6 +34,12 @@ def get_rays_tensor(H, W, focal, c2w):
     rays_o = numpy.broadcast_to(c2w[:3, -1], numpy.shape(rays_d))
     return torch.from_numpy(rays_o), torch.from_numpy(rays_d)
 
+def transpose_rays_tensor(rays):
+    rays = torch.unsqueeze(rays, 0)
+    rays = torch.transpose(rays, 2, 3).contiguous()
+    rays = torch.transpose(rays, 1, 2).contiguous()
+    return rays
+
 #needs normalized vector
 def raysampling(starting_point, normed_ray, samp_intervall, samp_times):
     sampling_tensor = torch.unsqueeze(starting_point, 0)
@@ -41,27 +47,37 @@ def raysampling(starting_point, normed_ray, samp_intervall, samp_times):
             sampling_tensor = torch.cat((sampling_tensor, torch.unsqueeze(sampling_tensor[-1] + normed_ray * samp_intervall, 0)))
     return sampling_tensor
 
-def calculate_2d_point(point_3d, extrinsic, intrinsic):
-    if point_3d.shape == torch.Size([3]):
-        tensor_one = torch.tensor([1])
-    else:
-        tensor_one = torch.ones(point_3d.shape)
-        tensor_one = torch.narrow(tensor_one,-1,0,1)
-        tensor_one = torch.transpose(tensor_one, 0,-1)
-        point_3d = torch.transpose(point_3d, 0,-1)
+def calculate_2d_point_batch(point_3d, extrinsic, intrinsic):
+    tensor_one = torch.ones(point_3d.shape)
+    tensor_one = torch.narrow(tensor_one,-1,0,1) #utility funktion rausschreiben
+    tensor_one = torch.transpose(tensor_one, 0,-1)
+    point_3d = torch.transpose(point_3d, 0,-1)
     w2c = torch.linalg.inv(extrinsic)
     #turn point_3d homogeneous
     tensor_4d = torch.cat((point_3d, tensor_one)).float()
-    print(tensor_4d.shape)
-    if point_3d.shape != torch.Size([3]):
-        tensor_4d = torch.transpose(tensor_4d, 0,-1)
-        print(tensor_4d.shape)
+    tensor_4d = torch.transpose(tensor_4d, 0,-1)
+    tensor_4d = torch.transpose(tensor_4d,-1,-2)
+    point_camera = torch.matmul(w2c, tensor_4d)
+    point_camera = torch.narrow(point_camera,-2,0,3)
+    point_image_homogeneous = torch.matmul(intrinsic, point_camera)
+    point_image_homogeneous_1 = torch.narrow(point_image_homogeneous, -2, 0, 2)
+    point_image_homogeneous_2 = torch.narrow(point_image_homogeneous, -2, 2, 1)
+    point_image = point_image_homogeneous_1 / point_image_homogeneous_2
+    #point_image = torch.round(point_image)
+    #point_image = point_image.int()
+    point_image = torch.transpose(point_image, -1, -2)
+    return point_image+400
+
+def calculate_2d_point(point_3d, extrinsic, intrinsic):
+    tensor_one = torch.tensor([1])
+    w2c = torch.linalg.inv(extrinsic)
+    #turn point_3d homogeneous
+    tensor_4d = torch.cat((point_3d, tensor_one)).float()
     point_camera = torch.matmul(w2c, tensor_4d)
     point_image_homogeneous = torch.matmul(intrinsic, point_camera[:3])
     point_image = point_image_homogeneous[:2] / point_image_homogeneous[2]
     point_image = torch.round(point_image)
     point_image = point_image.int()
-    point_image = torch.transpose(point_image, 0, -1)
     return point_image
 
 #for now i retire this function
@@ -94,7 +110,7 @@ def get_random_dmap_point_batch(depthmap,sampling_amount,divider):
     return point_batch
 
 def calculate_point_with_depth_value(origin, ray_vector, depth):
-    return origin + ray_vector * depth[:,:,None]
+    return origin + ray_vector * depth
 
 def calculate_vector_length_between_two_points(point_a, point_b):
     vector = point_a - point_b
@@ -108,8 +124,9 @@ def append_tensor(tensor, point=None):
     return tensor
 
 def tensor_index_lookup(tensor, index_tensor, are_rays=False):
-    transposed_index_tensor = torch.transpose(index_tensor, 0, 1)
-    chosen_rows = torch.index_select(tensor, 0, transposed_index_tensor[0]) 
+    transposed_index_tensor = torch.transpose(index_tensor, -2, -1)
+    narrowed_index_tensor = torch.narrow(transposed_index_tensor, -2, 0, 1)
+    chosen_rows = torch.index_select(tensor, 0, narrowed_index_tensor) 
     if (not are_rays):
         values = torch.gather(chosen_rows, 1, transposed_index_tensor[1].unsqueeze(1))
     else:
@@ -122,7 +139,7 @@ def calculate_srdf(sampled_point, camera_origin, predicted_dmap_point):
     z = torch.sub(sampled_point, camera_origin)
     y = torch.sub(predicted_dmap_point, camera_origin)
     srdf = torch.sub(y, z)
-    srdf = calc_vector_length(srdf)
+    #srdf = calc_vector_length(srdf)
     return srdf
 
 def load_and_show_image(img_path):
