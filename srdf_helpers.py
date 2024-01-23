@@ -10,7 +10,6 @@ def gaussian_blur(dmaps):
     for _ in range(4):
         dmaps = gauss(dmaps)
     return dmaps
-        
 
 def calc_viewing_direction(extrinsic):
         viewing_matrix = extrinsic[:3, :3]
@@ -25,14 +24,23 @@ def calc_normalized_vector(vector):
         vector_length = calc_vector_length(vector)
         return torch.tensor([vector[0].item()/vector_length,vector[1].item()/vector_length,vector[2].item()/vector_length])
 
-def get_rays_tensor(H, W, focal, c2w):
-    c2w = torch.tensor(c2w).numpy()
-    i, j = numpy.meshgrid(numpy.arange(W, dtype=numpy.float32),
-                       numpy.arange(H, dtype=numpy.float32), indexing='xy')
-    dirs = numpy.stack([(i-W*.5)/focal, -(j-H*.5)/focal, -numpy.ones_like(i)], -1)
-    rays_d = numpy.sum(dirs[..., numpy.newaxis, :] * c2w[:3, :3], -1)
-    rays_o = numpy.broadcast_to(c2w[:3, -1], numpy.shape(rays_d))
-    return torch.from_numpy(rays_o), torch.from_numpy(rays_d)
+# def get_rays_tensor(H, W, focal, c2w):
+#     c2w = torch.tensor(c2w).numpy()
+#     i, j = numpy.meshgrid(numpy.arange(W, dtype=numpy.float32),
+#                        numpy.arange(H, dtype=numpy.float32), indexing='xy')
+#     dirs = numpy.stack([(i-W*.5)/focal, -(j-H*.5)/focal, -numpy.ones_like(i)], -1)
+#     rays_d = numpy.sum(dirs[..., numpy.newaxis, :] * c2w[:3, :3], -1)
+#     rays_o = numpy.broadcast_to(c2w[:3, -1], numpy.shape(rays_d))
+#     return torch.from_numpy(rays_o), torch.from_numpy(rays_d)
+
+def get_rays_tensor_torch(H, W, focal, c2w):
+    #c2w = torch.tensor(c2w).numpy()
+    i, j = torch.meshgrid(torch.arange(W, dtype=torch.float32),
+                       torch.arange(H, dtype=torch.float32), indexing='xy')
+    dirs = torch.stack([(i-W*.5)/focal, -(j-H*.5)/focal, -torch.ones_like(i)], -1)
+    rays_d = torch.sum(dirs[..., None, :] * c2w[:3, :3], -1)
+    rays_o = torch.broadcast_to(c2w[:3, -1], rays_d.shape)
+    return rays_o, rays_d
 
 def transpose_rays_tensor(rays):
     rays = torch.unsqueeze(rays, 0)
@@ -154,7 +162,14 @@ def load_and_show_image(img_path):
     cv2.imshow('exr', img)
     cv2.waitKey(0)
 
-def save_into_file(images, idx, name="", bool=True):
+def dict_to_string(dict):
+    string = "__"
+    for key, value in dict.items():
+          string += key + "_" + str(value) + "__"
+    return string
+          
+
+def save_into_file(images, idx, name="", variable_list="", bool=True):
     directory = "Images/results"
     for root, dirs, files in os.walk(directory):
         for f in files:
@@ -164,8 +179,8 @@ def save_into_file(images, idx, name="", bool=True):
         os.chdir(directory)
         if images.shape == torch.Size([800, 800, 3]):
             images = images.detach().numpy().astype(numpy.float32)
-            cv2.imwrite(str(idx) + name + ".exr", images)
+            cv2.imwrite(str(idx) + name + variable_list + ".exr", images)
         else:
             for i, image in enumerate(images):
                 image = image.detach().numpy().astype(numpy.float32)
-                cv2.imwrite(str(idx[i]) + name + ".exr", image)
+                cv2.imwrite(str(idx[i]) + name + variable_list + ".exr", image)

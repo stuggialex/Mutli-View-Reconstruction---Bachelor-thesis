@@ -106,3 +106,7 @@ class Image:
                 dmap[column_row_tuple[0]][column_row_tuple[1]] = 0
         return
         
+    def gaussian_noise(self):
+        noise = abs(torch.randn(800,800))
+        for dmap in self.dmaps:
+            dmap += (0.1**0.5)*noise

@@ -16,7 +16,7 @@ IMAGE_HEIGHT = cameraSet.IMG_HEIGHT
 IMAGE_WIDTH = cameraSet.IMG_WIDTH
 
 #used in the loop
-ITERATION_NUM = 1
+ITERATION_NUM = 600
 
 #used in raysampling
 SAMPLING_INTERVALL = 0.1
@@ -31,7 +31,20 @@ GROUP_SIZE = len(CAMERAS)
 
 #during iteration the number of cameras checked for srdf
 CAMERA_BATCH_SIZE = 1
-DMAP_POINT_BATCH_SIZE = 1000
+DMAP_POINT_BATCH_SIZE = 200
+
+#SRDF parameter
+SIGMA = 5
+GAMMA = 1
+
+#dictionary for file names
+dict = {"iteration_number": ITERATION_NUM,
+        "sampling_intervall": SAMPLING_INTERVALL,
+        "sampling_amount": SAMPLING_AMOUNT,
+        "depth_map_point_batch_size": DMAP_POINT_BATCH_SIZE,
+        "sigma": SIGMA,
+        "gamma": GAMMA}
+dict_as_str = srdf_helpers.dict_to_string(dict)
 
 #current batch, camera chosen for this example
 chosen_camera = 0
@@ -44,10 +57,10 @@ dmap_of_chosen_camera = imageSet.dmaps[camera_idx]
 mask_of_chosen_camera = imageSet.masks[camera_idx]
 
 #loading in the dmaps into ADAM
-test_dmaps = testImageSet.dmaps
-imageSet.salt_and_pepper()
+imageSet.gaussian_noise()
 imageSet.activate_gradients()
 dmaps = imageSet.dmaps
+test_dmaps = torch.clone(dmaps)
 adam = torch.optim.Adam([dmaps])
 
 #main loop
@@ -57,20 +70,15 @@ def loop():
     """for now disregard this because i have already my chosen group, change later GROUP_SIZE to a proper number"""
     tensor_group_of_cams = imageSet.get_group_of_cams_as_tensor(group_of_cams)
 
-    #calculate origin and the pixel rays
-    rays_o, rays_d = srdf_helpers.get_rays_tensor(IMAGE_HEIGHT, IMAGE_WIDTH, intrinsic[0][0], extrinsic)
-    origin = rays_o[0][0]
-
-    masked_output = srdf_helpers.apply_mask(dmap_of_chosen_camera, mask_of_chosen_camera)
-
-    #some noise on the images
-    global dmaps
-    dmaps = srdf_helpers.gaussian_blur(dmaps)
-    dmaps[0] = torch.roll(dmaps[0], 20, 1)
-
     for _ in range(ITERATION_NUM):
         #reset gradients
         adam.zero_grad()
+
+        #calculate origin and the pixel rays
+        rays_o, rays_d = srdf_helpers.get_rays_tensor_torch(IMAGE_HEIGHT, IMAGE_WIDTH, intrinsic[0][0], extrinsic)
+        origin = rays_o[0][0]
+
+        masked_output = srdf_helpers.apply_mask(dmap_of_chosen_camera, mask_of_chosen_camera)
 
         #randomly selected points, that will be used for the pipeline, calculated with multinomial
         #shape: nx2
@@ -104,7 +112,7 @@ def loop():
         for idx_camera, camera in enumerate(CAMERAS):
             #variable instatiation
             srdf_camera_idx, srdf_intrinsic, srdf_extrinsic = cameraSet.__getitem__(camera)
-            srdf_rays_o, srdf_rays_d = srdf_helpers.get_rays_tensor(IMAGE_HEIGHT, IMAGE_WIDTH, srdf_intrinsic[0][0], srdf_extrinsic)
+            srdf_rays_o, srdf_rays_d = srdf_helpers.get_rays_tensor_torch(IMAGE_HEIGHT, IMAGE_WIDTH, srdf_intrinsic[0][0], srdf_extrinsic)
             srdf_origin = srdf_rays_o[0][0]
             srdf_dmap = imageSet.dmaps[idx_camera]
 
@@ -137,13 +145,11 @@ def loop():
         srdf_tensor = srdf_tensor.masked_fill(mask_srdf_tensor, 100)  
         min = torch.min(srdf_tensor, 1).values
         loss = torch.mean(min[min!=100])
-        loss.backward(retain_graph=True)
+        loss.backward()
 
         adam.step()
         
     for idx, test_dmap in enumerate(test_dmaps):
-        print(dmaps[idx][400])
-        print(test_dmap)
         is_zero = test_dmap - dmaps[idx]
         tuple_nonzero = torch.nonzero(is_zero)
         if idx == 0:
@@ -151,7 +157,7 @@ def loop():
         else:
             tensor_difference = srdf_helpers.append_tensor(tensor_difference, is_zero)
 
-    srdf_helpers.save_into_file(tensor_difference, CAMERAS, name="_result", bool=False)
+    srdf_helpers.save_into_file(tensor_difference, CAMERAS, name="_result", variable_list=dict_as_str, bool=False)
 
 
 

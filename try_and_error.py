@@ -61,8 +61,6 @@ srdf = srdf_helpers.calculate_srdf(point,camera_origin,preds)
 srdf_2 = torch.norm(srdf, dim=2)
 min = torch.min(srdf_2, 1)
 
-print(point)
-masked = torch.masked
 
 
 
