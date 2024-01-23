@@ -16,7 +16,7 @@ IMAGE_HEIGHT = cameraSet.IMG_HEIGHT
 IMAGE_WIDTH = cameraSet.IMG_WIDTH
 
 #used in the loop
-ITERATION_NUM = 600
+ITERATION_NUM = 100
 
 #used in raysampling
 SAMPLING_INTERVALL = 0.1
@@ -31,7 +31,7 @@ GROUP_SIZE = len(CAMERAS)
 
 #during iteration the number of cameras checked for srdf
 CAMERA_BATCH_SIZE = 1
-DMAP_POINT_BATCH_SIZE = 200
+DMAP_POINT_BATCH_SIZE = 1000
 
 #SRDF parameter
 SIGMA = 5
@@ -60,7 +60,8 @@ mask_of_chosen_camera = imageSet.masks[camera_idx]
 imageSet.gaussian_noise()
 imageSet.activate_gradients()
 dmaps = imageSet.dmaps
-test_dmaps = torch.clone(dmaps)
+test_dmaps =testImageSet.dmaps
+clone_dmaps = torch.clone(dmaps)
 adam = torch.optim.Adam([dmaps])
 
 #main loop
