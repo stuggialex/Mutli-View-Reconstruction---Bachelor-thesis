@@ -9,57 +9,65 @@ from Class import Image
 import srdf_helpers
 import coordinate_lookup
 
+rand = int(torch.floor(torch.rand(1)*200))
+print(rand)
+
 new_camera = Camera()
-new_Image = Image()
-IMAGE_HEIGHT = new_camera.IMG_HEIGHT
-IMAGE_WIDTH = new_camera.IMG_WIDTH
 
-idx, intrinsic, extrinsic = new_camera.__getitem__(0)
-dmap_idx, dmap = new_Image.__getitem__(0)
-
-img = new_Image.imgs[0]
-img2 = new_Image.imgs[1]
-dmap_1 = new_Image.dmaps[0]
-dmap_2 = new_Image.dmaps[1]
-
-mask_1 = new_Image.masks[0]
-mask_2 = new_Image.masks[1]
-
-masked_dmap_1 = srdf_helpers.apply_mask(dmap_1, mask_1)
-masked_dmap_2 = srdf_helpers.apply_mask(dmap_2, mask_2)
+idx, intrinsic, extrinsic = new_camera.__getitem__(rand)
 
 
-rays_o, rays_d = srdf_helpers.get_rays_tensor(IMAGE_HEIGHT, IMAGE_WIDTH, intrinsic[0][0], extrinsic)
-camera_origin = rays_o[0][0]
 
-example_tensor_0 = torch.tensor([1,2,3])
-example_tensor_1 = torch.tensor([[0,1],[1,1]])
-example_tensor_1_transposed = torch.transpose(example_tensor_1, 0, 1)
-example_tensor_2 = torch.tensor([1,2,3,3,2,1])
-example_tensor_3 = torch.tensor([[1,2,3],[4,5,6],[7,8,9],[10,11,12],[13,14,15]])
-example_tensor_4 = torch.tensor([[[1,2,3],[4,5,6],[7,8,9]],[[90,3,3],[9,5,6],[7,5,9]]])
-example_tensor_5 = torch.rand(1,2,3)
-example_tensor_6 = torch.rand(4,4)
+# new_Image = Image()
+# IMAGE_HEIGHT = new_camera.IMG_HEIGHT
+# IMAGE_WIDTH = new_camera.IMG_WIDTH
 
-random_points = srdf_helpers.get_random_dmap_point_batch(masked_dmap_1, 3, IMAGE_HEIGHT)
+# idx, intrinsic, extrinsic = new_camera.__getitem__(0)
+# dmap_idx, dmap = new_Image.__getitem__(0)
 
-unsqueezed_batch_sampled_dmap_coordinates = torch.unsqueeze(random_points, 0)
-unsqueezed_masked_output = torch.reshape(masked_dmap_1, (1, 1, IMAGE_HEIGHT, IMAGE_WIDTH))
-batch_dmap_values = coordinate_lookup.lookup_value_at_int(unsqueezed_batch_sampled_dmap_coordinates, unsqueezed_masked_output)
-batch_dmap_values = torch.squeeze(batch_dmap_values, 0)
+# img = new_Image.imgs[0]
+# img2 = new_Image.imgs[1]
+# dmap_1 = new_Image.dmaps[0]
+# dmap_2 = new_Image.dmaps[1]
 
-unsqueezed_rays_d = torch.unsqueeze(rays_d, 0)
-unsqueezed_rays_d = torch.transpose(unsqueezed_rays_d, 2, 3).contiguous()
-unsqueezed_rays_d = torch.transpose(unsqueezed_rays_d, 1, 2).contiguous()
-batch_ray_vector = coordinate_lookup.lookup_value_at_int(unsqueezed_batch_sampled_dmap_coordinates, unsqueezed_rays_d)
+# mask_1 = new_Image.masks[0]
+# mask_2 = new_Image.masks[1]
 
-point = srdf_helpers.calculate_point_with_depth_value(camera_origin, batch_ray_vector, batch_dmap_values)
+# masked_dmap_1 = srdf_helpers.apply_mask(dmap_1, mask_1)
+# masked_dmap_2 = srdf_helpers.apply_mask(dmap_2, mask_2)
 
-point = torch.rand(4,4,3)
-preds = torch.rand(4,4,3)
-srdf = srdf_helpers.calculate_srdf(point,camera_origin,preds)
-srdf_2 = torch.norm(srdf, dim=2)
-min = torch.min(srdf_2, 1)
+
+# rays_o, rays_d = srdf_helpers.get_rays_tensor_torch(IMAGE_HEIGHT, IMAGE_WIDTH, intrinsic[0][0], extrinsic)
+# camera_origin = rays_o[0][0]
+
+# example_tensor_0 = torch.tensor([1,2,3])
+# example_tensor_1 = torch.tensor([[0,1],[1,1]])
+# example_tensor_1_transposed = torch.transpose(example_tensor_1, 0, 1)
+# example_tensor_2 = torch.tensor([1,2,3,3,2,1])
+# example_tensor_3 = torch.tensor([[1,2,3],[4,5,6],[7,8,9],[10,11,12],[13,14,15]])
+# example_tensor_4 = torch.tensor([[[1,2,3],[4,5,6],[7,8,9]],[[90,3,3],[9,5,6],[7,5,9]]])
+# example_tensor_5 = torch.rand(1,2,3)
+# example_tensor_6 = torch.rand(4,4)
+
+# random_points = srdf_helpers.get_random_dmap_point_batch(masked_dmap_1, 3, IMAGE_HEIGHT)
+
+# unsqueezed_batch_sampled_dmap_coordinates = torch.unsqueeze(random_points, 0)
+# unsqueezed_masked_output = torch.reshape(masked_dmap_1, (1, 1, IMAGE_HEIGHT, IMAGE_WIDTH))
+# batch_dmap_values = coordinate_lookup.lookup_value_at_int(unsqueezed_batch_sampled_dmap_coordinates, unsqueezed_masked_output)
+# batch_dmap_values = torch.squeeze(batch_dmap_values, 0)
+
+# unsqueezed_rays_d = torch.unsqueeze(rays_d, 0)
+# unsqueezed_rays_d = torch.transpose(unsqueezed_rays_d, 2, 3).contiguous()
+# unsqueezed_rays_d = torch.transpose(unsqueezed_rays_d, 1, 2).contiguous()
+# batch_ray_vector = coordinate_lookup.lookup_value_at_int(unsqueezed_batch_sampled_dmap_coordinates, unsqueezed_rays_d)
+
+# point = srdf_helpers.calculate_point_with_depth_value(camera_origin, batch_ray_vector, batch_dmap_values)
+
+# point = torch.rand(4,4,3)
+# preds = torch.rand(4,4,3)
+# srdf = srdf_helpers.calculate_srdf(point,camera_origin,preds)
+# srdf_2 = torch.norm(srdf, dim=2)
+# min = torch.min(srdf_2, 1)
 
 
 

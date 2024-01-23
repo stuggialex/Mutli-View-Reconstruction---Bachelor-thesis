@@ -57,19 +57,20 @@ class Camera:
         return dotproduct_list
     
     def get_n_closest_cameras(self, idx, extrinsic, num_cam):
-          ordered_list = self.get_ordered_dotproduct_list_cameras(idx, extrinsic)
-          return ordered_list[:num_cam]
+        ordered_list = self.get_ordered_dotproduct_list_cameras(idx, extrinsic)
+        result = ordered_list[:num_cam]
+        index, dotproduct = zip(*result)
+        return index, dotproduct
     
 class Image:
-    def __init__(self):
+    def __init__(self, arr):
         #dummy -> select fitting images and hardcode it into the array
-        arr = [0,57,95,155]
         arr_imgs = []
         arr_masks = []
         arr_dmaps = []
         for idx, item in enumerate(arr):
             img = cv2.imread("Images/imgs/"+str(item)+ ".jpg")
-            mask = cv2.imread("Images/masks/"+str(item)+ "_mask.jpg")
+            mask = cv2.imread("Images/masks/"+str(item)+ ".jpg")
             dmap = cv2.imread("Images/dmaps/" + str(item) + ".exr",  cv2.IMREAD_ANYDEPTH) 
             #dmap = cv2.cvtColor(dmap, cv2.COLOR_BGR2RGB)
             img = torch.from_numpy(img)
@@ -78,12 +79,14 @@ class Image:
             arr_imgs.append(img)
             arr_masks.append(mask)
             arr_dmaps.append(dmap)
+            self.idxs = arr
             self.imgs = torch.stack(arr_imgs)
             self.masks = torch.stack(arr_masks)
             self.dmaps = torch.stack(arr_dmaps)
 
     def  __getitem__(self, idx):
-          return idx, self.dmaps[idx]
+        new_index = self.idxs.index(idx)
+        return new_index, self.imgs[new_index], self.masks[new_index], self.dmaps[new_index]
     
     def activate_gradients(self):
         self.dmaps = self.dmaps.float().requires_grad_()

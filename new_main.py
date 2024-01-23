@@ -1,15 +1,15 @@
 from Class import Camera, Image
 import srdf_helpers
 import coordinate_lookup
-import visualizer
+# import visualizer
 import torchvision
 
 import torch
 
 #initialize data
 cameraSet = Camera()
-imageSet = Image()
-testImageSet = Image()
+# imageSet = Image()
+# testImageSet = Image()
 
 #current size of images
 IMAGE_HEIGHT = cameraSet.IMG_HEIGHT
@@ -25,9 +25,10 @@ HALF_SAMPLE_DISTANCE = SAMPLING_INTERVALL * SAMPLING_AMOUNT /  2
 
 #currently used cameras, data available
 CAMERAS = [0,57,95,155]
+NUMBER_OF_CAMS = 200
 
 #needed number to calculate group_of_cams
-GROUP_SIZE = len(CAMERAS)
+GROUP_SIZE = 4
 
 #during iteration the number of cameras checked for srdf
 CAMERA_BATCH_SIZE = 1
@@ -46,32 +47,38 @@ dict = {"iteration_number": ITERATION_NUM,
         "gamma": GAMMA}
 dict_as_str = srdf_helpers.dict_to_string(dict)
 
-#current batch, camera chosen for this example
-chosen_camera = 0
-
-#getting depth values, intrinsic and extrinsic(c2w) of the chosen camera
-camera_idx, intrinsic, extrinsic = cameraSet.__getitem__(chosen_camera)
-dmap_of_chosen_camera = imageSet.dmaps[camera_idx]
-
-#gets mask in the shape of 800x800x3
-mask_of_chosen_camera = imageSet.masks[camera_idx]
-
 #loading in the dmaps into ADAM
-imageSet.gaussian_noise()
-imageSet.activate_gradients()
-dmaps = imageSet.dmaps
-test_dmaps =testImageSet.dmaps
-clone_dmaps = torch.clone(dmaps)
-adam = torch.optim.Adam([dmaps])
+# imageSet.gaussian_noise()
+# imageSet.activate_gradients()
+# dmaps = imageSet.dmaps
+# test_dmaps =testImageSet.dmaps
+# clone_dmaps = torch.clone(dmaps)
+# adam = torch.optim.Adam([dmaps])
 
 #main loop
 def loop():
-    #get a group of cams, in this case the only 4 cams i have chosen
-    group_of_cams = cameraSet.get_n_closest_cameras(camera_idx, extrinsic, GROUP_SIZE)
-    """for now disregard this because i have already my chosen group, change later GROUP_SIZE to a proper number"""
-    tensor_group_of_cams = imageSet.get_group_of_cams_as_tensor(group_of_cams)
-
     for _ in range(ITERATION_NUM):
+        #for each new iteration we choose a random camera and get their attributes
+        idx_chosen_camera = int(torch.floor(torch.rand(1)*NUMBER_OF_CAMS))
+        _, intrinsic, extrinsic = cameraSet.__getitem__(idx_chosen_camera)
+
+        #get a group of cams closest to the chosen camera at the beginning
+        cam_idx, _ = cameraSet.get_n_closest_cameras(idx_chosen_camera, extrinsic, GROUP_SIZE)
+        cam_idx = list(cam_idx)
+        cam_idx.insert(0, idx_chosen_camera)
+
+        imageSet = Image(cam_idx)
+
+        #gets img, mask and dmap in the shape of 800x800x3
+        cam_idx_new, img_ofchosen_camera, mask_of_chosen_camera, dmap_of_chosen_camera = imageSet.__getitem__(idx_chosen_camera)
+
+        
+        #tensor_group_of_cams = imageSet.get_group_of_cams_as_tensor(group_of_cams)
+
+       # print(tensor_group_of_cams)
+
+        return
+
         #reset gradients
         adam.zero_grad()
 
@@ -150,15 +157,15 @@ def loop():
 
         adam.step()
         
-    for idx, test_dmap in enumerate(test_dmaps):
-        is_zero = test_dmap - dmaps[idx]
-        tuple_nonzero = torch.nonzero(is_zero)
-        if idx == 0:
-            tensor_difference = srdf_helpers.append_tensor(is_zero)
-        else:
-            tensor_difference = srdf_helpers.append_tensor(tensor_difference, is_zero)
+    # for idx, test_dmap in enumerate(test_dmaps):
+    #     is_zero = test_dmap - dmaps[idx]
+    #     tuple_nonzero = torch.nonzero(is_zero)
+    #     if idx == 0:
+    #         tensor_difference = srdf_helpers.append_tensor(is_zero)
+    #     else:
+    #         tensor_difference = srdf_helpers.append_tensor(tensor_difference, is_zero)
 
-    srdf_helpers.save_into_file(tensor_difference, CAMERAS, name="_result", variable_list=dict_as_str, bool=False)
+    # srdf_helpers.save_into_file(tensor_difference, CAMERAS, name="_result", variable_list=dict_as_str, bool=False)
 
 
 
