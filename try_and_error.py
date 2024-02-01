@@ -29,7 +29,7 @@ masked_dmap_1 = srdf_helpers.apply_mask(dmap_1, mask_1)
 masked_dmap_2 = srdf_helpers.apply_mask(dmap_2, mask_2)
 
 
-rays_o, rays_d = srdf_helpers.get_rays_tensor(IMAGE_HEIGHT, IMAGE_WIDTH, intrinsic[0][0], extrinsic)
+rays_o, rays_d = srdf_helpers.get_rays_tensor_torch(IMAGE_HEIGHT, IMAGE_WIDTH, intrinsic[0][0], extrinsic)
 camera_origin = rays_o[0][0]
 
 example_tensor_0 = torch.tensor([1,2,3])
@@ -61,7 +61,10 @@ srdf = srdf_helpers.calculate_srdf(point,camera_origin,preds)
 srdf_2 = torch.norm(srdf, dim=2)
 min = torch.min(srdf_2, 1)
 
-
+dmap5000 = cv2.imread("Images/diff/test.exr",  cv2.IMREAD_ANYDEPTH) 
+dmap5000 = dmap_1 - torch.from_numpy(dmap5000)
+dmap5000 = torch.unsqueeze(dmap5000, 0)
+srdf_helpers.save_into_file(dmap5000, [0], name = "diff")
 
 
 

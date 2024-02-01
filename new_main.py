@@ -6,6 +6,9 @@ import torchvision
 
 import torch
 
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter()
+
 #initialize data
 cameraSet = Camera()
 imageSet = Image()
@@ -16,22 +19,23 @@ IMAGE_HEIGHT = cameraSet.IMG_HEIGHT
 IMAGE_WIDTH = cameraSet.IMG_WIDTH
 
 #used in the loop
-ITERATION_NUM = 100
+ITERATION_NUM = 5000
 
 #used in raysampling
-SAMPLING_INTERVALL = 0.1
+SAMPLING_INTERVALL = 0.05
 SAMPLING_AMOUNT = 10
 HALF_SAMPLE_DISTANCE = SAMPLING_INTERVALL * SAMPLING_AMOUNT /  2
 
 #currently used cameras, data available
 CAMERAS = [0,57,95,155]
+CAMERAS_WITHOUT_0 = [57,95,155]
 
 #needed number to calculate group_of_cams
 GROUP_SIZE = len(CAMERAS)
 
 #during iteration the number of cameras checked for srdf
 CAMERA_BATCH_SIZE = 1
-DMAP_POINT_BATCH_SIZE = 1000
+DMAP_POINT_BATCH_SIZE = 4000
 
 #SRDF parameter
 SIGMA = 5
@@ -57,7 +61,7 @@ dmap_of_chosen_camera = imageSet.dmaps[camera_idx]
 mask_of_chosen_camera = imageSet.masks[camera_idx]
 
 #loading in the dmaps into ADAM
-imageSet.gaussian_noise()
+imageSet.gaussian_noise(0)
 imageSet.activate_gradients()
 dmaps = imageSet.dmaps
 test_dmaps =testImageSet.dmaps
@@ -71,7 +75,8 @@ def loop():
     """for now disregard this because i have already my chosen group, change later GROUP_SIZE to a proper number"""
     tensor_group_of_cams = imageSet.get_group_of_cams_as_tensor(group_of_cams)
 
-    for _ in range(ITERATION_NUM):
+    for x in range(ITERATION_NUM):
+        print(x)
         #reset gradients
         adam.zero_grad()
 
@@ -116,6 +121,9 @@ def loop():
             srdf_rays_o, srdf_rays_d = srdf_helpers.get_rays_tensor_torch(IMAGE_HEIGHT, IMAGE_WIDTH, srdf_intrinsic[0][0], srdf_extrinsic)
             srdf_origin = srdf_rays_o[0][0]
             srdf_dmap = imageSet.dmaps[idx_camera]
+            srdf_mask = imageSet.masks[idx_camera]
+
+            srdf_masked_output = srdf_helpers.apply_mask(srdf_dmap, srdf_mask)
 
             #project the sampled 3d points into the image plane of the cameras
             #shape:
@@ -125,9 +133,9 @@ def loop():
             #get the necessary depth map value and the corresponding ray for the next calculation
             #shape:
             #shape:
-            srdf_dmap = torch.unsqueeze(srdf_dmap, 0)
-            srdf_dmap = torch.unsqueeze(srdf_dmap, 0)
-            srdf_dmap_value = coordinate_lookup.lookup_value_at(point_2d, srdf_dmap)
+            srdf_masked_output = torch.unsqueeze(srdf_masked_output, 0)
+            srdf_masked_output = torch.unsqueeze(srdf_masked_output, 0)
+            srdf_dmap_value = coordinate_lookup.lookup_value_at(point_2d, srdf_masked_output)
             unsqueezed_srdf_rays_d = srdf_helpers.transpose_rays_tensor(srdf_rays_d)
             srdf_ray_vector = coordinate_lookup.lookup_value_at(point_2d, unsqueezed_srdf_rays_d)
             
@@ -135,20 +143,23 @@ def loop():
             #shape:
             srdf_predicted_point = srdf_helpers.calculate_point_with_depth_value(srdf_origin, srdf_ray_vector, srdf_dmap_value)
             srdf_predicted_point = torch.reshape(srdf_predicted_point, (DMAP_POINT_BATCH_SIZE,SAMPLING_AMOUNT,3))
-            
             #calculate the srdf
             #shape:
             step = torch.norm(srdf_helpers.calculate_srdf(sampling_tensor, srdf_origin, srdf_predicted_point), dim=2)
-            step_mask = torch.ge(step, 1000)
             srdf_tensor *= step
             
         mask_srdf_tensor = torch.ge(srdf_tensor, 1000)  
         srdf_tensor = srdf_tensor.masked_fill(mask_srdf_tensor, 100)  
         min = torch.min(srdf_tensor, 1).values
         loss = torch.mean(min[min!=100])
+        if x % 100 == 99:
+            writer.add_image("result", dmaps, global_step=x)
+        writer.add_scalar("Loss/train", loss, x)
         loss.backward()
 
         adam.step()
+
+    writer.flush()
         
     for idx, test_dmap in enumerate(test_dmaps):
         is_zero = test_dmap - dmaps[idx]
@@ -158,7 +169,7 @@ def loop():
         else:
             tensor_difference = srdf_helpers.append_tensor(tensor_difference, is_zero)
 
-    srdf_helpers.save_into_file(tensor_difference, CAMERAS, name="_result", variable_list=dict_as_str, bool=False)
+    srdf_helpers.save_into_file(dmaps, CAMERAS, name="_result", variable_list=dict_as_str, bool=False)
 
 
 

@@ -110,3 +110,7 @@ class Image:
         noise = abs(torch.randn(800,800))
         for dmap in self.dmaps:
             dmap += (0.1**0.5)*noise
+
+    def gaussian_noise(self, idx):
+        noise = abs(torch.randn(800,800))
+        self.dmaps[idx] += (0.1**0.5)*noise
