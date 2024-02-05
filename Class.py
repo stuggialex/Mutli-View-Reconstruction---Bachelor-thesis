@@ -27,6 +27,7 @@ class Camera:
         for frame in self.json['frames']:
              self.poses.append(frame['transform_matrix'])
         self.poses_length = len(self.poses)
+        self.poses = torch.FloatTensor(self.poses)
 
         self.intrinsic = torch.tensor(np.zeros(shape=(3, 3), dtype=np.float32))
         focal_x = (self.IMG_WIDTH / 2) / np.tan(self.camera_angle_x / 2)
@@ -36,7 +37,14 @@ class Camera:
         self.intrinsic[2][2] = 1
     
     def  __getitem__(self, idx):
-          return idx, self.intrinsic, torch.FloatTensor(self.poses[idx])
+          return idx, self.intrinsic, self.poses[idx]
+    
+    def get_item_tensor(self, list):
+        poses = torch.index_select(self.poses, 0, list)
+        intrinsic = self.intrinsic.unsqueeze(0)
+        for num in range(poses.shape[0]-1):
+            intrinsic = torch.cat((intrinsic, self.intrinsic.unsqueeze(0)))
+        return intrinsic, poses
     
     def get_ordered_dotproduct_list_cameras(self, idx, extrinsic):
         count = 0
@@ -63,11 +71,11 @@ class Camera:
 class Image:
     def __init__(self):
         #dummy -> select fitting images and hardcode it into the array
-        arr = [0,57,95,155]
+        self.arr = [0,57,95,155]
         arr_imgs = []
         arr_masks = []
         arr_dmaps = []
-        for idx, item in enumerate(arr):
+        for idx, item in enumerate(self.arr):
             img = cv2.imread("Images/imgs/"+str(item)+ ".jpg")
             mask = cv2.imread("Images/masks/"+str(item)+ "_mask.jpg")
             dmap = cv2.imread("Images/dmaps/" + str(item) + ".exr",  cv2.IMREAD_ANYDEPTH) 
@@ -89,12 +97,19 @@ class Image:
         self.dmaps = self.dmaps.float().requires_grad_()
     
     def get_group_of_cams_as_tensor(self, list):
-        for num, group in enumerate(list):
-            if num == 0:
-                tensor = append_tensor(self.imgs[num]) #group[0]])
+        for group in list:
+            idx = self.get_dmap_idx_with_real_index(group[0])
+            if not 'tensor' in locals():
+                tensor = append_tensor(self.dmaps[idx])
+                mask = append_tensor(self.masks[idx])
             else:
-              tensor = append_tensor(tensor, self.imgs[num]) #group[0]])
-        return tensor
+              tensor = append_tensor(tensor, self.dmaps[idx])
+              mask = append_tensor(mask, self.masks[idx])
+        return tensor, mask
+    
+    def get_dmap_idx_with_real_index(self, idx):
+        fake_idx = self.arr.index(idx)
+        return fake_idx
     
     def salt_and_pepper(self):
         divider = 800

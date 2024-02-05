@@ -1,10 +1,11 @@
 from Class import Camera, Image
 import srdf_helpers
 import coordinate_lookup
-import visualizer
+#import visualizer
 import torchvision
 
 import torch
+print(torch.__version__)
 
 from torch.utils.tensorboard import SummaryWriter
 writer = SummaryWriter()
@@ -19,7 +20,7 @@ IMAGE_HEIGHT = cameraSet.IMG_HEIGHT
 IMAGE_WIDTH = cameraSet.IMG_WIDTH
 
 #used in the loop
-ITERATION_NUM = 5000
+ITERATION_NUM = 1000
 
 #used in raysampling
 SAMPLING_INTERVALL = 0.05
@@ -31,11 +32,11 @@ CAMERAS = [0,57,95,155]
 CAMERAS_WITHOUT_0 = [57,95,155]
 
 #needed number to calculate group_of_cams
-GROUP_SIZE = len(CAMERAS)
+GROUP_SIZE = len(CAMERAS_WITHOUT_0)
 
 #during iteration the number of cameras checked for srdf
 CAMERA_BATCH_SIZE = 1
-DMAP_POINT_BATCH_SIZE = 4000
+DMAP_POINT_BATCH_SIZE =4000 
 
 #SRDF parameter
 SIGMA = 5
@@ -56,6 +57,7 @@ chosen_camera = 0
 #getting depth values, intrinsic and extrinsic(c2w) of the chosen camera
 camera_idx, intrinsic, extrinsic = cameraSet.__getitem__(chosen_camera)
 dmap_of_chosen_camera = imageSet.dmaps[camera_idx]
+extrinsic = torch.unsqueeze(extrinsic, 0)
 
 #gets mask in the shape of 800x800x3
 mask_of_chosen_camera = imageSet.masks[camera_idx]
@@ -71,10 +73,11 @@ adam = torch.optim.Adam([dmaps])
 #main loop
 def loop():
     #get a group of cams, in this case the only 4 cams i have chosen
-    group_of_cams = cameraSet.get_n_closest_cameras(camera_idx, extrinsic, GROUP_SIZE)
-    """for now disregard this because i have already my chosen group, change later GROUP_SIZE to a proper number"""
-    tensor_group_of_cams = imageSet.get_group_of_cams_as_tensor(group_of_cams)
-
+    temp_extrinsic = torch.squeeze(extrinsic, 0)
+    group_of_cams = cameraSet.get_n_closest_cameras(camera_idx, temp_extrinsic, GROUP_SIZE)
+    idx_of_group_of_cams = torch.Tensor([i[0] for i in group_of_cams]).int()
+    dmaps_group_of_cams, masks_group_of_cams = imageSet.get_group_of_cams_as_tensor(group_of_cams)
+    
     for x in range(ITERATION_NUM):
         print(x)
         #reset gradients
@@ -82,7 +85,7 @@ def loop():
 
         #calculate origin and the pixel rays
         rays_o, rays_d = srdf_helpers.get_rays_tensor_torch(IMAGE_HEIGHT, IMAGE_WIDTH, intrinsic[0][0], extrinsic)
-        origin = rays_o[0][0]
+        origin = rays_o[0][0][0]
 
         masked_output = srdf_helpers.apply_mask(dmap_of_chosen_camera, mask_of_chosen_camera)
 
@@ -112,41 +115,42 @@ def loop():
         sampling_tensor = srdf_helpers.raysampling(predicted_point - HALF_SAMPLE_DISTANCE * batch_ray_vector, batch_ray_vector, SAMPLING_INTERVALL, SAMPLING_AMOUNT)
         sampling_tensor = torch.transpose(sampling_tensor,0,1)
 
-        srdf_tensor = torch.ones(DMAP_POINT_BATCH_SIZE, SAMPLING_AMOUNT)
+        srdf_tensor = torch.ones(GROUP_SIZE, DMAP_POINT_BATCH_SIZE, SAMPLING_AMOUNT)
 
-        #go through the group of cameras and check their side
-        for idx_camera, camera in enumerate(CAMERAS):
-            #variable instatiation
-            srdf_camera_idx, srdf_intrinsic, srdf_extrinsic = cameraSet.__getitem__(camera)
-            srdf_rays_o, srdf_rays_d = srdf_helpers.get_rays_tensor_torch(IMAGE_HEIGHT, IMAGE_WIDTH, srdf_intrinsic[0][0], srdf_extrinsic)
-            srdf_origin = srdf_rays_o[0][0]
-            srdf_dmap = imageSet.dmaps[idx_camera]
-            srdf_mask = imageSet.masks[idx_camera]
+        #variable instatiation
+        srdf_intrinsic, srdf_extrinsic = cameraSet.get_item_tensor(idx_of_group_of_cams)
+        srdf_torch_rays_o, srdf_torch_rays_d = srdf_helpers.get_rays_tensor_torch(IMAGE_HEIGHT, IMAGE_WIDTH, srdf_intrinsic[0][0][0], srdf_extrinsic)
+        
 
-            srdf_masked_output = srdf_helpers.apply_mask(srdf_dmap, srdf_mask)
+        srdf_origin = srdf_torch_rays_o[0][0][0]
+        
+        srdf_dmap = dmaps_group_of_cams
+        srdf_mask = masks_group_of_cams
 
-            #project the sampled 3d points into the image plane of the cameras
-            #shape:
-            point_2d =srdf_helpers.calculate_2d_point_batch(sampling_tensor, srdf_extrinsic, srdf_intrinsic)
-            point_2d = torch.reshape(point_2d, (1,point_2d.shape[0]*point_2d.shape[1],2))
+        srdf_masked_output = srdf_helpers.apply_mask_tensor(srdf_dmap, srdf_mask)
 
-            #get the necessary depth map value and the corresponding ray for the next calculation
-            #shape:
-            #shape:
-            srdf_masked_output = torch.unsqueeze(srdf_masked_output, 0)
-            srdf_masked_output = torch.unsqueeze(srdf_masked_output, 0)
-            srdf_dmap_value = coordinate_lookup.lookup_value_at(point_2d, srdf_masked_output)
-            unsqueezed_srdf_rays_d = srdf_helpers.transpose_rays_tensor(srdf_rays_d)
-            srdf_ray_vector = coordinate_lookup.lookup_value_at(point_2d, unsqueezed_srdf_rays_d)
-            
-            #now calculate the point that the selected group of cameras think is the surface
-            #shape:
-            srdf_predicted_point = srdf_helpers.calculate_point_with_depth_value(srdf_origin, srdf_ray_vector, srdf_dmap_value)
-            srdf_predicted_point = torch.reshape(srdf_predicted_point, (DMAP_POINT_BATCH_SIZE,SAMPLING_AMOUNT,3))
-            #calculate the srdf
-            #shape:
-            step = torch.norm(srdf_helpers.calculate_srdf(sampling_tensor, srdf_origin, srdf_predicted_point), dim=2)
-            srdf_tensor *= step
+        #project the sampled 3d points into the image plane of the cameras
+        #shape:
+        point_2d = srdf_helpers.calculate_2d_point_batch(sampling_tensor, srdf_extrinsic, srdf_intrinsic[0], SAMPLING_AMOUNT)
+        point_2d = torch.reshape(point_2d, (point_2d.shape[0],point_2d.shape[1]*point_2d.shape[2],2))
+
+        #get the necessary depth map value and the corresponding ray for the next calculation
+        #shape:
+        #shape:
+        srdf_masked_output = torch.unsqueeze(srdf_masked_output, 1)
+        srdf_dmap_value = coordinate_lookup.lookup_value_at(point_2d, srdf_masked_output)
+        unsqueezed_srdf_rays_d = srdf_helpers.transpose_rays_tensor(srdf_torch_rays_d)
+        srdf_ray_vector = coordinate_lookup.lookup_value_at(point_2d, unsqueezed_srdf_rays_d)
+        
+        #now calculate the point that the selected group of cameras think is the surface
+        #shape:
+        srdf_predicted_point = srdf_helpers.calculate_point_with_depth_value(srdf_origin, srdf_ray_vector, srdf_dmap_value)
+        srdf_predicted_point = torch.reshape(srdf_predicted_point, (GROUP_SIZE, DMAP_POINT_BATCH_SIZE,SAMPLING_AMOUNT,3))
+        #calculate the srdf
+        #shape:
+        step = srdf_helpers.calculate_srdf(sampling_tensor, srdf_origin, srdf_predicted_point)
+        step = torch.norm(step, dim=3)
+        srdf_tensor *= step
             
         mask_srdf_tensor = torch.ge(srdf_tensor, 1000)  
         srdf_tensor = srdf_tensor.masked_fill(mask_srdf_tensor, 100)  
@@ -156,6 +160,8 @@ def loop():
             writer.add_image("result", dmaps, global_step=x)
         writer.add_scalar("Loss/train", loss, x)
         loss.backward()
+
+        #mse calculation
 
         adam.step()
 
@@ -169,7 +175,9 @@ def loop():
         else:
             tensor_difference = srdf_helpers.append_tensor(tensor_difference, is_zero)
 
-    srdf_helpers.save_into_file(dmaps, CAMERAS, name="_result", variable_list=dict_as_str, bool=False)
+    mse = torch.mean(torch.square(tensor_difference))
+    #writer.add_scalar("MSE", mse)
+    #srdf_helpers.save_into_file(dmaps, CAMERAS, name="_result", variable_list=dict_as_str, bool=False)
 
 
 

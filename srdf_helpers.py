@@ -34,16 +34,29 @@ def calc_normalized_vector(vector):
 #     return torch.from_numpy(rays_o), torch.from_numpy(rays_d)
 
 def get_rays_tensor_torch(H, W, focal, c2w):
-    #c2w = torch.tensor(c2w).numpy()
+    """Get rays for all pixels.
+        Args:
+            H (int): height of image
+            W (int): width of image
+            focal (float): focal length
+            c2w [B, 4, 4]: camera-to-world matrix
+
+        Returns:
+            rays_o [B, H, W, 3]: ray origins
+            rays_d [B, H, W, 3]: ray directions
+    """
     i, j = torch.meshgrid(torch.arange(W, dtype=torch.float32),
                        torch.arange(H, dtype=torch.float32), indexing='xy')
     dirs = torch.stack([(i-W*.5)/focal, -(j-H*.5)/focal, -torch.ones_like(i)], -1)
-    rays_d = torch.sum(dirs[..., None, :] * c2w[:3, :3], -1)
-    rays_o = torch.broadcast_to(c2w[:3, -1], rays_d.shape)
+    # Rotate ray directions from camera frame to the world frame.
+    # dirs [H, W, 3], [C, 4, 4] -> [C, H, W, 3]
+    rays_d = torch.sum(dirs[None, :, :, None, :] * c2w[:, None, None, :3, :3], -1)
+    #rays_d = torch.sum(dirs[..., None, :] * c2w[:3, :3], -1)
+    rays_o = torch.broadcast_to(c2w[:,None, None, :3, -1], rays_d.shape)
     return rays_o, rays_d
 
 def transpose_rays_tensor(rays):
-    rays = torch.unsqueeze(rays, 0)
+    #rays = torch.unsqueeze(rays, 0)
     rays = torch.transpose(rays, 2, 3).contiguous()
     rays = torch.transpose(rays, 1, 2).contiguous()
     return rays
@@ -55,17 +68,20 @@ def raysampling(starting_point, normed_ray, samp_intervall, samp_times):
             sampling_tensor = torch.cat((sampling_tensor, torch.unsqueeze(sampling_tensor[-1] + normed_ray * samp_intervall, 0)))
     return sampling_tensor
 
-def calculate_2d_point_batch(point_3d, extrinsic, intrinsic):
+def calculate_2d_point_batch(point_3d, extrinsic, intrinsic, sampling_amount):
     tensor_one = torch.ones(point_3d.shape)
     tensor_one = torch.narrow(tensor_one,-1,0,1) #utility funktion rausschreiben
     tensor_one = torch.transpose(tensor_one, 0,-1)
     point_3d = torch.transpose(point_3d, 0,-1)
-    w2c = torch.linalg.inv(extrinsic)
+    w2c = torch.inverse(extrinsic)
     #turn point_3d homogeneous
     tensor_4d = torch.cat((point_3d, tensor_one)).float()
     tensor_4d = torch.transpose(tensor_4d, 0,-1)
     tensor_4d = torch.transpose(tensor_4d,-1,-2)
-    point_camera = torch.matmul(w2c, tensor_4d)
+    tensor_4d_expanded = tensor_4d.expand(w2c.shape[0], tensor_4d.shape[0], 4, sampling_amount)
+    w2c_expanded = w2c.expand(tensor_4d.shape[0], w2c.shape[0], 4, 4)
+    w2c_expanded = torch.transpose(w2c_expanded, 0, 1)
+    point_camera = torch.matmul(w2c_expanded, tensor_4d_expanded)
     point_camera = torch.narrow(point_camera,-2,0,3)
     point_image_homogeneous = torch.matmul(intrinsic, point_camera)
     point_image_homogeneous_1 = torch.narrow(point_image_homogeneous, -2, 0, 2)
@@ -98,6 +114,11 @@ def apply_mask(image, mask):
         bool_mask = torch.ge(mask, 200)[:,:,0]
     else:
          bool_mask = torch.ge(mask, 200)
+    masked_output = image * bool_mask.int().float()
+    return masked_output
+
+def apply_mask_tensor(image, mask):
+    bool_mask = torch.ge(mask, 200)[:,:,:,0]
     masked_output = image * bool_mask.int().float()
     return masked_output
 
