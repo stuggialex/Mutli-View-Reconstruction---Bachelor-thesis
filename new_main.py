@@ -21,11 +21,11 @@ IMAGE_HEIGHT = cameraSet.IMG_HEIGHT
 IMAGE_WIDTH = cameraSet.IMG_WIDTH
 
 #used in the loop
-ITERATION_NUM = 301
+ITERATION_NUM = 10000
 
 #used in raysampling
 SAMPLING_INTERVALL = 0.05
-SAMPLING_AMOUNT = 20
+SAMPLING_AMOUNT = 40
 HALF_SAMPLE_DISTANCE = SAMPLING_INTERVALL * SAMPLING_AMOUNT /  2
 
 #currently used cameras, data available
@@ -40,7 +40,7 @@ CAMERA_BATCH_SIZE = 1
 DMAP_POINT_BATCH_SIZE = 10000
 
 #SRDF parameter
-SIGMA = 50
+SIGMA = 10
 GAMMA = 0.01
 
 #dictionary for file names
@@ -181,7 +181,7 @@ def loop():
             mse = torch.mean(torch.square(tensor_difference))
             print(mse)
             writer.add_scalar("MSE" + str(idx), mse, x)
-            if x % 10 == 0:
+            if x % 100 == 0:
                 squeee = torch.unsqueeze(dmaps[idx], 0)
                 writer.add_image("result" + str(idx), squeee, global_step=x)
 
