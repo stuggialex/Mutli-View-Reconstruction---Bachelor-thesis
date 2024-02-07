@@ -162,7 +162,7 @@ def loop():
         energy_function = energy_function.masked_fill(mask_energy_function, 100)  
         #min = torch.min(energy_function, 1).values
         loss = torch.mean(energy_function[energy_function!=100])
-        print(loss)
+        #print(loss)
         
 
         loss.backward()
@@ -179,7 +179,7 @@ def loop():
         for idx, gtd in enumerate(ground_truth_dmaps):
             tensor_difference = gtd - dmaps[idx]
             mse = torch.mean(torch.square(tensor_difference))
-            print(mse)
+            #print(mse)
             writer.add_scalar("MSE" + str(idx), mse, x)
             if x % 100 == 0:
                 squeee = torch.unsqueeze(dmaps[idx], 0)
@@ -187,7 +187,7 @@ def loop():
 
         tensor_difference = gtd - dmaps[idx]
         mse = torch.mean(torch.square(tensor_difference))
-        print(mse)
+        #print(mse)
         writer.add_scalar("MSE_gesamt", mse, x)
 
         #adam.g
