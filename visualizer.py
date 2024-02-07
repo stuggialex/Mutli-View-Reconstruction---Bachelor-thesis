@@ -15,7 +15,7 @@ test_camera_0, intrinsic, extrinsic = cameraSet.__getitem__(test_camera_0)
 IMAGE_HEIGHT = cameraSet.IMG_HEIGHT
 IMAGE_WIDTH = cameraSet.IMG_WIDTH
 
-rays_o, rays_d = srdf_helpers.get_rays_tensor_torch(IMAGE_HEIGHT,IMAGE_WIDTH, intrinsic[0][0], extrinsic)
+#rays_o, rays_d = srdf_helpers.get_rays_tensor_torch(IMAGE_HEIGHT,IMAGE_WIDTH, intrinsic[0][0], extrinsic)
 
 #example_data
 example_tensor_0 = torch.tensor([0,1,2])
@@ -55,11 +55,11 @@ def plot(points=None, points_2d=None, rays=None, origins=None, length=3):
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
-    ax.set_xlim(-4, 4)
-    ax.set_ylim(-4, 4)
-    ax.set_zlim(-4, 4)
-    # ax.set_xlim(-400, 400)
+    # ax.set_xlim(-4, 4)
     # ax.set_ylim(-4, 4)
-    # ax.set_zlim(-400, 400)
+    # ax.set_zlim(-4, 4)
+    ax.set_xlim(-400, 400)
+    ax.set_ylim(-4, 4)
+    ax.set_zlim(-400, 400)
     ax.set_title('Test')
     plt.show()

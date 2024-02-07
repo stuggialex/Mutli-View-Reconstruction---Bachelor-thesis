@@ -5,10 +5,11 @@ import coordinate_lookup
 import torchvision
 
 import torch
-print(torch.__version__)
 
 from torch.utils.tensorboard import SummaryWriter
 writer = SummaryWriter()
+
+cuda = torch.device("cuda:0")
 
 #initialize data
 cameraSet = Camera()
@@ -20,11 +21,11 @@ IMAGE_HEIGHT = cameraSet.IMG_HEIGHT
 IMAGE_WIDTH = cameraSet.IMG_WIDTH
 
 #used in the loop
-ITERATION_NUM = 1000
+ITERATION_NUM = 301
 
 #used in raysampling
 SAMPLING_INTERVALL = 0.05
-SAMPLING_AMOUNT = 10
+SAMPLING_AMOUNT = 20
 HALF_SAMPLE_DISTANCE = SAMPLING_INTERVALL * SAMPLING_AMOUNT /  2
 
 #currently used cameras, data available
@@ -36,11 +37,11 @@ GROUP_SIZE = len(CAMERAS_WITHOUT_0)
 
 #during iteration the number of cameras checked for srdf
 CAMERA_BATCH_SIZE = 1
-DMAP_POINT_BATCH_SIZE =4000 
+DMAP_POINT_BATCH_SIZE = 10000
 
 #SRDF parameter
-SIGMA = 5
-GAMMA = 1
+SIGMA = 50
+GAMMA = 0.01
 
 #dictionary for file names
 dict = {"iteration_number": ITERATION_NUM,
@@ -63,12 +64,13 @@ extrinsic = torch.unsqueeze(extrinsic, 0)
 mask_of_chosen_camera = imageSet.masks[camera_idx]
 
 #loading in the dmaps into ADAM
-imageSet.gaussian_noise(0)
+#imageSet.gaussian_noise(0)
+imageSet.dmaps[0] += 5
 imageSet.activate_gradients()
 dmaps = imageSet.dmaps
-test_dmaps =testImageSet.dmaps
+ground_truth_dmaps =testImageSet.dmaps
 clone_dmaps = torch.clone(dmaps)
-adam = torch.optim.Adam([dmaps])
+adam = torch.optim.Adam([dmaps], lr=0.03)
 
 #main loop
 def loop():
@@ -150,34 +152,60 @@ def loop():
         #shape:
         step = srdf_helpers.calculate_srdf(sampling_tensor, srdf_origin, srdf_predicted_point)
         step = torch.norm(step, dim=3)
-        srdf_tensor *= step
-            
-        mask_srdf_tensor = torch.ge(srdf_tensor, 1000)  
-        srdf_tensor = srdf_tensor.masked_fill(mask_srdf_tensor, 100)  
-        min = torch.min(srdf_tensor, 1).values
-        loss = torch.mean(min[min!=100])
-        if x % 100 == 99:
-            writer.add_image("result", dmaps, global_step=x)
-        writer.add_scalar("Loss/train", loss, x)
+
+        srdf_consistency = srdf_helpers.calculate_srdf_consistency(step, SIGMA, GAMMA)
+
+        energy_function = torch.sum(srdf_consistency, 1)
+        
+        # srdf_tensor *= step    
+        mask_energy_function = torch.ge(energy_function, 100)  
+        energy_function = energy_function.masked_fill(mask_energy_function, 100)  
+        #min = torch.min(energy_function, 1).values
+        loss = torch.mean(energy_function[energy_function!=100])
+        print(loss)
+        
+
         loss.backward()
+        # for group in adam.param_groups:
+        #     for p in group['params']:
+        #         if p.grad is not None:
+        #             break
+        #             print(p.grad.flatten().shape)
+                    #writer.add_histogram("gradients", p.grad.flatten(), x)
+        
+        writer.add_scalar("Loss/train", loss, x)
 
         #mse calculation
+        for idx, gtd in enumerate(ground_truth_dmaps):
+            tensor_difference = gtd - dmaps[idx]
+            mse = torch.mean(torch.square(tensor_difference))
+            print(mse)
+            writer.add_scalar("MSE" + str(idx), mse, x)
+            if x % 10 == 0:
+                squeee = torch.unsqueeze(dmaps[idx], 0)
+                writer.add_image("result" + str(idx), squeee, global_step=x)
+
+        tensor_difference = gtd - dmaps[idx]
+        mse = torch.mean(torch.square(tensor_difference))
+        print(mse)
+        writer.add_scalar("MSE_gesamt", mse, x)
+
+        #adam.g
+        #writer.add_histogram(tag + "grads", x)
 
         adam.step()
 
     writer.flush()
         
-    for idx, test_dmap in enumerate(test_dmaps):
-        is_zero = test_dmap - dmaps[idx]
-        tuple_nonzero = torch.nonzero(is_zero)
-        if idx == 0:
-            tensor_difference = srdf_helpers.append_tensor(is_zero)
-        else:
-            tensor_difference = srdf_helpers.append_tensor(tensor_difference, is_zero)
+    # for idx, test_dmap in enumerate(ground_truth_dmaps):
+    #     is_zero = test_dmap - dmaps[idx]
+    #     tuple_nonzero = torch.nonzero(is_zero)
+    #     if idx == 0:
+    #         tensor_difference = srdf_helpers.append_tensor(is_zero)
+    #     else:
+    #         tensor_difference = srdf_helpers.append_tensor(tensor_difference, is_zero)
 
-    mse = torch.mean(torch.square(tensor_difference))
-    #writer.add_scalar("MSE", mse)
-    #srdf_helpers.save_into_file(dmaps, CAMERAS, name="_result", variable_list=dict_as_str, bool=False)
+    srdf_helpers.save_into_file(dmaps, CAMERAS, name="_result", variable_list=dict_as_str, bool=False)
 
 
 

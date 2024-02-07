@@ -171,6 +171,11 @@ def calculate_srdf(sampled_point, camera_origin, predicted_dmap_point):
     #srdf = calc_vector_length(srdf)
     return srdf
 
+def calculate_srdf_consistency(tensor, sigma, gamma):
+    tensor = torch.exp(torch.square(tensor)/sigma)+gamma
+    srdf_consistency = torch.prod(tensor, 0)
+    return srdf_consistency
+
 def load_and_show_image(img_path):
     img = cv2.imread(img_path, cv2.IMREAD_ANYDEPTH)
     '''

@@ -8,6 +8,7 @@ from Class import Camera
 from Class import Image
 import srdf_helpers
 import coordinate_lookup
+import visualizer
 
 new_camera = Camera()
 new_Image = Image()
@@ -29,8 +30,8 @@ masked_dmap_1 = srdf_helpers.apply_mask(dmap_1, mask_1)
 masked_dmap_2 = srdf_helpers.apply_mask(dmap_2, mask_2)
 
 
-rays_o, rays_d = srdf_helpers.get_rays_tensor_torch(IMAGE_HEIGHT, IMAGE_WIDTH, intrinsic[0][0], extrinsic)
-camera_origin = rays_o[0][0]
+#rays_o, rays_d = srdf_helpers.get_rays_tensor_torch(IMAGE_HEIGHT, IMAGE_WIDTH, intrinsic[0][0], extrinsic)
+#camera_origin = rays_o[0][0]
 
 example_tensor_0 = torch.tensor([1,2,3])
 example_tensor_1 = torch.tensor([[0,1],[1,1]])
@@ -41,31 +42,9 @@ example_tensor_4 = torch.tensor([[[1,2,3],[4,5,6],[7,8,9]],[[90,3,3],[9,5,6],[7,
 example_tensor_5 = torch.rand(1,2,3)
 example_tensor_6 = torch.rand(4,4)
 
-random_points = srdf_helpers.get_random_dmap_point_batch(masked_dmap_1, 3, IMAGE_HEIGHT)
+points = srdf_helpers.get_random_dmap_point_batch(masked_dmap_1, 100, 800)
 
-unsqueezed_batch_sampled_dmap_coordinates = torch.unsqueeze(random_points, 0)
-unsqueezed_masked_output = torch.reshape(masked_dmap_1, (1, 1, IMAGE_HEIGHT, IMAGE_WIDTH))
-batch_dmap_values = coordinate_lookup.lookup_value_at_int(unsqueezed_batch_sampled_dmap_coordinates, unsqueezed_masked_output)
-batch_dmap_values = torch.squeeze(batch_dmap_values, 0)
-
-unsqueezed_rays_d = torch.unsqueeze(rays_d, 0)
-unsqueezed_rays_d = torch.transpose(unsqueezed_rays_d, 2, 3).contiguous()
-unsqueezed_rays_d = torch.transpose(unsqueezed_rays_d, 1, 2).contiguous()
-batch_ray_vector = coordinate_lookup.lookup_value_at_int(unsqueezed_batch_sampled_dmap_coordinates, unsqueezed_rays_d)
-
-point = srdf_helpers.calculate_point_with_depth_value(camera_origin, batch_ray_vector, batch_dmap_values)
-
-point = torch.rand(4,4,3)
-preds = torch.rand(4,4,3)
-srdf = srdf_helpers.calculate_srdf(point,camera_origin,preds)
-srdf_2 = torch.norm(srdf, dim=2)
-min = torch.min(srdf_2, 1)
-
-dmap5000 = cv2.imread("Images/diff/test.exr",  cv2.IMREAD_ANYDEPTH) 
-dmap5000 = dmap_1 - torch.from_numpy(dmap5000)
-dmap5000 = torch.unsqueeze(dmap5000, 0)
-srdf_helpers.save_into_file(dmap5000, [0], name = "diff")
-
+visualizer.plot(points_2d=points)
 
 
 # vector__test_point_camera_origin = test_point - camera_origin
