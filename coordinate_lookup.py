@@ -1,7 +1,5 @@
 import torch
 
-cuda = torch.device("cuda:0")
-
 def lookup_value_at(
     pixel_coordinates: torch.Tensor, feature_map: torch.Tensor
 ) -> torch.Tensor:
@@ -29,9 +27,6 @@ def lookup_value_at(
         torch.ones(pixel_coordinates.shape[0:-1]) * (float((feature_map.shape[2])) - 2),
         torch.ones(pixel_coordinates.shape[0:-1]) * (float((feature_map.shape[3])) - 2)],
         2)
-
-    minValues = minValues.to(cuda)
-    maxValues = maxValues.to(cuda)
 
     positions = torch.max(torch.min(pixel_coordinates, maxValues), minValues)
 
@@ -93,7 +88,7 @@ def lookup_value_at_int(
     # [B, C, N_P]
     index_tensor = index_tensor.repeat([1, channels, 1])
     # do lookup [B, C, W*H], [B, C, N_P] => [B, C, N_p]
-    result = torch.gather(feature_map, -1, index_tensor.long().to(cuda))
+    result = torch.gather(feature_map, -1, index_tensor.long())
     result = torch.transpose(result, -2, -1)
 
     return result

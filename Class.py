@@ -39,14 +39,6 @@ class Camera:
     def  __getitem__(self, idx):
           return idx, self.intrinsic, self.poses[idx]
     
-    def to_cuda(self, device):
-        self.poses = self.poses.to(device)
-        self.intrinsic = self.intrinsic.to(device)
-
-    def to_cpu(self):
-        self.poses = self.poses.cpu()
-        self.intrinsic = self.intrinsic.cpu()
-    
     def get_item_tensor(self, list):
         poses = torch.index_select(self.poses, 0, list)
         intrinsic = self.intrinsic.unsqueeze(0)
@@ -137,14 +129,3 @@ class Image:
     def gaussian_noise(self, idx):
         noise = abs(torch.randn(800,800))
         self.dmaps[idx] += (0.1**0.5)*noise
-    
-    def to_cuda(self, device):
-        self.imgs = self.imgs.to(device)
-        self.masks = self.masks.to(device)
-        self.dmaps = self.dmaps.to(device)
-
-    def to_cpu(self):
-        self.imgs = self.imgs.cpu()
-        self.masks = self.masks.cpu()
-        self.dmaps = self.dmaps.cpu()
-

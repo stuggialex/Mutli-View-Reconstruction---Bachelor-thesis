@@ -5,8 +5,6 @@ import shutil
 import os
 import cv2
 
-cuda = torch.device("cuda:0")
-
 def gaussian_blur(dmaps):
     gauss = torchvision.transforms.GaussianBlur(21, sigma=0.5)
     for _ in range(4):
@@ -15,7 +13,7 @@ def gaussian_blur(dmaps):
 
 def calc_viewing_direction(extrinsic):
         viewing_matrix = extrinsic[:3, :3]
-        null_vec = torch.tensor([0, 0, 1], dtype=torch.float32).to(cuda)
+        null_vec = torch.tensor([0, 0, 1], dtype=torch.float32)
         return torch.matmul(viewing_matrix, null_vec * -1)
 
 def calc_vector_length(vector):
@@ -49,9 +47,7 @@ def get_rays_tensor_torch(H, W, focal, c2w):
     """
     i, j = torch.meshgrid(torch.arange(W, dtype=torch.float32),
                        torch.arange(H, dtype=torch.float32), indexing='xy')
-    i = i.to(cuda)
-    j = j.to(cuda)
-    dirs = torch.stack([(i-W*.5)/focal, -(j-H*.5)/focal, (-torch.ones_like(i)).to(cuda)], -1)
+    dirs = torch.stack([(i-W*.5)/focal, -(j-H*.5)/focal, -torch.ones_like(i)], -1)
     # Rotate ray directions from camera frame to the world frame.
     # dirs [H, W, 3], [C, 4, 4] -> [C, H, W, 3]
     rays_d = torch.sum(dirs[None, :, :, None, :] * c2w[:, None, None, :3, :3], -1)
@@ -73,7 +69,7 @@ def raysampling(starting_point, normed_ray, samp_intervall, samp_times):
     return sampling_tensor
 
 def calculate_2d_point_batch(point_3d, extrinsic, intrinsic, sampling_amount):
-    tensor_one = torch.ones(point_3d.shape).to(cuda)
+    tensor_one = torch.ones(point_3d.shape)
     tensor_one = torch.narrow(tensor_one,-1,0,1) #utility funktion rausschreiben
     tensor_one = torch.transpose(tensor_one, 0,-1)
     point_3d = torch.transpose(point_3d, 0,-1)
@@ -163,7 +159,7 @@ def tensor_index_lookup(tensor, index_tensor, are_rays=False):
     if (not are_rays):
         values = torch.gather(chosen_rows, 1, transposed_index_tensor[1].unsqueeze(1))
     else:
-        index_tensor_plus_ones = transposed_index_tensor[1].unsqueeze(1).unsqueeze(1) * torch.ones(3, dtype=int).to(cuda)
+        index_tensor_plus_ones = transposed_index_tensor[1].unsqueeze(1).unsqueeze(1) * torch.ones(3, dtype=int)
         values = torch.gather(chosen_rows, 1, index_tensor_plus_ones)
     return values
           
