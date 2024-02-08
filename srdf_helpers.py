@@ -49,6 +49,8 @@ def get_rays_tensor_torch(H, W, focal, c2w):
     """
     i, j = torch.meshgrid(torch.arange(W, dtype=torch.float32),
                        torch.arange(H, dtype=torch.float32), indexing='xy')
+    i = i.to(cuda)
+    j = j.to(cuda)
     dirs = torch.stack([(i-W*.5)/focal, -(j-H*.5)/focal, (-torch.ones_like(i)).to(cuda)], -1)
     # Rotate ray directions from camera frame to the world frame.
     # dirs [H, W, 3], [C, 4, 4] -> [C, H, W, 3]
