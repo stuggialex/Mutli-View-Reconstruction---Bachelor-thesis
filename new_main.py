@@ -24,7 +24,7 @@ IMAGE_HEIGHT = cameraSet.IMG_HEIGHT
 IMAGE_WIDTH = cameraSet.IMG_WIDTH
 
 #used in the loop
-ITERATION_NUM = 10000
+ITERATION_NUM = 100
 
 #used in raysampling
 SAMPLING_INTERVALL = 0.05
@@ -38,9 +38,9 @@ CAMERAS_WITHOUT_0 = [57,95,155]
 #needed number to calculate group_of_cams
 GROUP_SIZE = len(CAMERAS_WITHOUT_0)
 
-#during iteration the number of cameras checked for srdf 
+#during iteration the number of cameras checked for srdf
 CAMERA_BATCH_SIZE = 1
-DMAP_POINT_BATCH_SIZE = 100
+DMAP_POINT_BATCH_SIZE = 10000
 
 #SRDF parameter
 SIGMA = 10
