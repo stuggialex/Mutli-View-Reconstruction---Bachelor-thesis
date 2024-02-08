@@ -120,7 +120,7 @@ def loop():
         sampling_tensor = srdf_helpers.raysampling(predicted_point - HALF_SAMPLE_DISTANCE * batch_ray_vector, batch_ray_vector, SAMPLING_INTERVALL, SAMPLING_AMOUNT)
         sampling_tensor = torch.transpose(sampling_tensor,0,1)
 
-        srdf_tensor = torch.ones(GROUP_SIZE, DMAP_POINT_BATCH_SIZE, SAMPLING_AMOUNT).to_cuda(cuda)
+        srdf_tensor = torch.ones(GROUP_SIZE, DMAP_POINT_BATCH_SIZE, SAMPLING_AMOUNT).to(cuda)
 
         #variable instatiation
         srdf_intrinsic, srdf_extrinsic = cameraSet.get_item_tensor(idx_of_group_of_cams)
