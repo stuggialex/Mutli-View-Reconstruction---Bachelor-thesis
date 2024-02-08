@@ -38,7 +38,7 @@ CAMERAS_WITHOUT_0 = [57,95,155]
 #needed number to calculate group_of_cams
 GROUP_SIZE = len(CAMERAS_WITHOUT_0)
 
-#during iteration the number of cameras checked for srdf
+#during iteration the number of cameras checked for srdf 
 CAMERA_BATCH_SIZE = 1
 DMAP_POINT_BATCH_SIZE = 100
 
