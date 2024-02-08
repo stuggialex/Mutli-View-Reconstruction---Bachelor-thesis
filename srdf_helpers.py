@@ -49,7 +49,7 @@ def get_rays_tensor_torch(H, W, focal, c2w):
     """
     i, j = torch.meshgrid(torch.arange(W, dtype=torch.float32),
                        torch.arange(H, dtype=torch.float32), indexing='xy')
-    dirs = torch.stack([(i-W*.5)/focal, -(j-H*.5)/focal, -torch.ones_like(i)], -1)
+    dirs = torch.stack([(i-W*.5)/focal, -(j-H*.5)/focal, (-torch.ones_like(i)).to(cuda)], -1)
     # Rotate ray directions from camera frame to the world frame.
     # dirs [H, W, 3], [C, 4, 4] -> [C, H, W, 3]
     rays_d = torch.sum(dirs[None, :, :, None, :] * c2w[:, None, None, :3, :3], -1)
@@ -71,7 +71,7 @@ def raysampling(starting_point, normed_ray, samp_intervall, samp_times):
     return sampling_tensor
 
 def calculate_2d_point_batch(point_3d, extrinsic, intrinsic, sampling_amount):
-    tensor_one = torch.ones(point_3d.shape)
+    tensor_one = torch.ones(point_3d.shape).to(cuda)
     tensor_one = torch.narrow(tensor_one,-1,0,1) #utility funktion rausschreiben
     tensor_one = torch.transpose(tensor_one, 0,-1)
     point_3d = torch.transpose(point_3d, 0,-1)
@@ -161,7 +161,7 @@ def tensor_index_lookup(tensor, index_tensor, are_rays=False):
     if (not are_rays):
         values = torch.gather(chosen_rows, 1, transposed_index_tensor[1].unsqueeze(1))
     else:
-        index_tensor_plus_ones = transposed_index_tensor[1].unsqueeze(1).unsqueeze(1) * torch.ones(3, dtype=int)
+        index_tensor_plus_ones = transposed_index_tensor[1].unsqueeze(1).unsqueeze(1) * torch.ones(3, dtype=int).to(cuda)
         values = torch.gather(chosen_rows, 1, index_tensor_plus_ones)
     return values
           
