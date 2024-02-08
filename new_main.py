@@ -64,8 +64,8 @@ extrinsic = torch.unsqueeze(extrinsic, 0)
 mask_of_chosen_camera = imageSet.masks[camera_idx]
 
 #loading in the dmaps into ADAM
-#imageSet.gaussian_noise(0)
-imageSet.dmaps[0] += 5
+imageSet.gaussian_noise(0)
+#imageSet.dmaps[0] += 5
 imageSet.activate_gradients()
 dmaps = imageSet.dmaps
 ground_truth_dmaps =testImageSet.dmaps
