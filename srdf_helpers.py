@@ -4,6 +4,7 @@ import numpy
 import shutil
 import os
 import cv2
+from new_main import cuda
 
 def gaussian_blur(dmaps):
     gauss = torchvision.transforms.GaussianBlur(21, sigma=0.5)
@@ -13,7 +14,7 @@ def gaussian_blur(dmaps):
 
 def calc_viewing_direction(extrinsic):
         viewing_matrix = extrinsic[:3, :3]
-        null_vec = torch.tensor([0, 0, 1], dtype=torch.float32)
+        null_vec = torch.tensor([0, 0, 1], dtype=torch.float32).to(cuda)
         return torch.matmul(viewing_matrix, null_vec * -1)
 
 def calc_vector_length(vector):
