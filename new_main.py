@@ -13,11 +13,11 @@ cuda = torch.device("cuda:0")
 
 #initialize data
 cameraSet = Camera()
-cameraSet = cameraSet.to_cuda(cuda)
+cameraSet.to_cuda(cuda)
 imageSet = Image()
-imageSet = imageSet.to_cuda(cuda)
+imageSet.to_cuda(cuda)
 testImageSet = Image()
-testImage = testImageSet.to_cuda(cuda)
+testImageSet.to_cuda(cuda)
 
 #current size of images
 IMAGE_HEIGHT = cameraSet.IMG_HEIGHT
