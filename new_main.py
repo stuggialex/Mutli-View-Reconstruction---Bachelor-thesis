@@ -40,7 +40,7 @@ GROUP_SIZE = len(CAMERAS_WITHOUT_0)
 
 #during iteration the number of cameras checked for srdf
 CAMERA_BATCH_SIZE = 1
-DMAP_POINT_BATCH_SIZE = 10000
+DMAP_POINT_BATCH_SIZE = 100
 
 #SRDF parameter
 SIGMA = 10
