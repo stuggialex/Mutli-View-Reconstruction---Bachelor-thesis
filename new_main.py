@@ -80,7 +80,7 @@ def loop():
     #get a group of cams, in this case the only 4 cams i have chosen
     temp_extrinsic = torch.squeeze(extrinsic, 0)
     group_of_cams = cameraSet.get_n_closest_cameras(camera_idx, temp_extrinsic, GROUP_SIZE)
-    idx_of_group_of_cams = torch.Tensor([i[0] for i in group_of_cams]).int().to_cuda(cuda)
+    idx_of_group_of_cams = torch.Tensor([i[0] for i in group_of_cams]).int().to(cuda)
     dmaps_group_of_cams, masks_group_of_cams = imageSet.get_group_of_cams_as_tensor(group_of_cams)
     
     for x in range(ITERATION_NUM):
