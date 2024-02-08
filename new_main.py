@@ -13,11 +13,11 @@ cuda = torch.device("cuda:0")
 
 #initialize data
 cameraSet = Camera()
-cameraSet.to_cuda(cuda)
+cameraSet = cameraSet.to_cuda(cuda)
 imageSet = Image()
-imageSet.to_cuda(cuda)
+imageSet = imageSet.to_cuda(cuda)
 testImageSet = Image()
-testImageSet.to_cuda(cuda)
+testImage = testImageSet.to_cuda(cuda)
 
 #current size of images
 IMAGE_HEIGHT = cameraSet.IMG_HEIGHT
@@ -80,7 +80,7 @@ def loop():
     #get a group of cams, in this case the only 4 cams i have chosen
     temp_extrinsic = torch.squeeze(extrinsic, 0)
     group_of_cams = cameraSet.get_n_closest_cameras(camera_idx, temp_extrinsic, GROUP_SIZE)
-    idx_of_group_of_cams = torch.Tensor([i[0] for i in group_of_cams]).int()
+    idx_of_group_of_cams = torch.Tensor([i[0] for i in group_of_cams]).int().to_cuda(cuda)
     dmaps_group_of_cams, masks_group_of_cams = imageSet.get_group_of_cams_as_tensor(group_of_cams)
     
     for x in range(ITERATION_NUM):
@@ -120,7 +120,7 @@ def loop():
         sampling_tensor = srdf_helpers.raysampling(predicted_point - HALF_SAMPLE_DISTANCE * batch_ray_vector, batch_ray_vector, SAMPLING_INTERVALL, SAMPLING_AMOUNT)
         sampling_tensor = torch.transpose(sampling_tensor,0,1)
 
-        srdf_tensor = torch.ones(GROUP_SIZE, DMAP_POINT_BATCH_SIZE, SAMPLING_AMOUNT)
+        srdf_tensor = torch.ones(GROUP_SIZE, DMAP_POINT_BATCH_SIZE, SAMPLING_AMOUNT).to_cuda(cuda)
 
         #variable instatiation
         srdf_intrinsic, srdf_extrinsic = cameraSet.get_item_tensor(idx_of_group_of_cams)
@@ -175,23 +175,27 @@ def loop():
         #             break
         #             print(p.grad.flatten().shape)
                     #writer.add_histogram("gradients", p.grad.flatten(), x)
-        
-        writer.add_scalar("Loss/train", loss, x)
+       
+        loss_cpu = loss.cpu()
+        writer.add_scalar("Loss/train", loss_cpu, x)
 
         #mse calculation
         for idx, gtd in enumerate(ground_truth_dmaps):
             tensor_difference = gtd - dmaps[idx]
             mse = torch.mean(torch.square(tensor_difference))
+            mse_cpu = mse.cpu()
             #print(mse)
-            writer.add_scalar("MSE" + str(idx), mse, x)
+            writer.add_scalar("MSE" + str(idx), mse_cpu, x)
             if x % 100 == 0:
-                squeee = torch.unsqueeze(dmaps[idx], 0)
-                writer.add_image("result" + str(idx), squeee, global_step=x)
+                unsqueezed_dmaps = torch.unsqueeze(dmaps[idx], 0)
+                unsqueezed_dmaps = unsqueezed_dmaps.cpu()
+                writer.add_image("result" + str(idx), unsqueezed_dmaps, global_step=x)
 
         tensor_difference = gtd - dmaps[idx]
         mse = torch.mean(torch.square(tensor_difference))
+        mse_cpu = mse.cpu()
         #print(mse)
-        writer.add_scalar("MSE_gesamt", mse, x)
+        writer.add_scalar("MSE_gesamt", mse_cpu, x)
 
         #adam.g
         #writer.add_histogram(tag + "grads", x)
