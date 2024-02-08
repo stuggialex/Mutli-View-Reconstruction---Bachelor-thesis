@@ -4,7 +4,8 @@ import numpy
 import shutil
 import os
 import cv2
-from new_main import cuda
+
+cuda = torch.device("cuda:0")
 
 def gaussian_blur(dmaps):
     gauss = torchvision.transforms.GaussianBlur(21, sigma=0.5)
