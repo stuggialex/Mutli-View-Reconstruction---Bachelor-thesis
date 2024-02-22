@@ -64,8 +64,8 @@ def transpose_rays_tensor(rays):
 #needs normalized vector
 def raysampling(starting_point, normed_ray, samp, samp_times):
     sampling_tensor = torch.ones(samp_times, starting_point.shape[0], starting_point.shape[1])*starting_point
-    randn = torch.abs(torch.randn(samp_times, starting_point.shape[0], 1))
-    sampling_tensor += normed_ray * randn
+    #randn = torch.abs(torch.randn(samp_times, starting_point.shape[0], 1))
+    #sampling_tensor += normed_ray * randn
     return sampling_tensor
 
 def calculate_2d_point_batch(point_3d, extrinsic, intrinsic, sampling_amount):
