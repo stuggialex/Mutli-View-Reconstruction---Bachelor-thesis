@@ -62,10 +62,10 @@ def transpose_rays_tensor(rays):
     return rays
 
 #needs normalized vector
-def raysampling(starting_point, normed_ray, samp_intervall, samp_times):
-    sampling_tensor = torch.unsqueeze(starting_point, 0)
-    for x in range(samp_times - 1):
-            sampling_tensor = torch.cat((sampling_tensor, torch.unsqueeze(sampling_tensor[-1] + normed_ray * samp_intervall, 0)))
+def raysampling(starting_point, normed_ray, samp, samp_times):
+    sampling_tensor = torch.ones(samp_times, starting_point.shape[0], starting_point.shape[1])*starting_point
+    randn = torch.abs(torch.randn(samp_times, starting_point.shape[0], 1))
+    sampling_tensor += normed_ray * randn
     return sampling_tensor
 
 def calculate_2d_point_batch(point_3d, extrinsic, intrinsic, sampling_amount):
@@ -122,20 +122,20 @@ def apply_mask_tensor(image, mask):
     masked_output = image * bool_mask.int().float()
     return masked_output
 
+def apply_srdf_mask(srdf):
+    bool_mask = torch.le(srdf, 1)
+    masked_output = srdf * bool_mask.int().float()
+    return masked_output
+
+
 #divider equals to the row number
 def get_random_dmap_point_batch(depthmap,sampling_amount,divider):
     #flatten the tensor and get a random item out of it
     t = torch.flatten(depthmap)
     idx = torch.multinomial(t,sampling_amount)
-    for item in idx:  
-        column_row_tuple = divmod(item.item(), divider)
-        #get depth map value out of the received index from multinomial
-        #depth_value = depthmap[column_row_tuple[0]][column_row_tuple[1]]
-        point_tensor = torch.tensor([[column_row_tuple[0],column_row_tuple[1]]])
-        if 'point_batch' in locals():
-            point_batch = torch.cat((point_batch, point_tensor))
-        else:
-             point_batch = point_tensor
+    dividend = torch.div(idx, divider, rounding_mode="floor")
+    remainder = torch.remainder(idx, divider)
+    point_batch = torch.stack((dividend, remainder), 1)
     return point_batch
 
 def calculate_point_with_depth_value(origin, ray_vector, depth):
