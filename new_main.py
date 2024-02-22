@@ -23,12 +23,11 @@ IMAGE_HEIGHT = cameraSet.IMG_HEIGHT
 IMAGE_WIDTH = cameraSet.IMG_WIDTH
 
 #used in the loop
-ITERATION_NUM = 1
+ITERATION_NUM = 100
 
 #used in raysampling
-"""WARNUNG method raysampling changed"""
 SAMPLING_INTERVALL = 0.05
-SAMPLING_AMOUNT = 1
+SAMPLING_AMOUNT = 40
 HALF_SAMPLE_DISTANCE = SAMPLING_INTERVALL * SAMPLING_AMOUNT /  2
 
 #currently used cameras, data available
@@ -40,7 +39,7 @@ GROUP_SIZE = len(CAMERAS_WITHOUT_0)
 
 #during iteration the number of cameras checked for srdf
 CAMERA_BATCH_SIZE = 1
-DMAP_POINT_BATCH_SIZE = 1
+DMAP_POINT_BATCH_SIZE = 10000
 
 #SRDF parameter
 SIGMA = 10
@@ -99,6 +98,7 @@ def loop():
         #randomly selected points, that will be used for the pipeline, calculated with multinomial
         #shape: nx2
         batch_sampled_dmap_coordinates = get_random_dmap_point_batch(masked_output, DMAP_POINT_BATCH_SIZE, IMAGE_HEIGHT)
+        
         #corresponding depth map values to batch_sampled_dmap_points
         #shape: nx1
         unsqueezed_batch_sampled_dmap_coordinates = torch.unsqueeze(batch_sampled_dmap_coordinates, 0)
@@ -115,13 +115,12 @@ def loop():
         #resulting 3d point from the randomly selected batch_sampled_dmap_points
         #shape: nx3
         predicted_point = calculate_point_with_depth_value(origin, batch_ray_vector, batch_dmap_values)
-        print("3d point: " + str(predicted_point))
 
         #tensor of points sampled around the predicted_point
         #shape: mxnx3   m: number of sampled points
-        """removed - HALF_SAMPLE_DISTANCE * batch_ray_vector"""
-        sampling_tensor = raysampling(predicted_point, batch_ray_vector, SAMPLING_INTERVALL, SAMPLING_AMOUNT)
-        #sampling_tensor = torch.transpose(sampling_tensor,0,1)
+        sampling_tensor = raysampling(predicted_point - HALF_SAMPLE_DISTANCE * batch_ray_vector, batch_ray_vector, SAMPLING_INTERVALL, SAMPLING_AMOUNT)
+        sampling_tensor = torch.transpose(sampling_tensor,0,1)
+
         srdf_tensor = torch.ones(GROUP_SIZE, DMAP_POINT_BATCH_SIZE, SAMPLING_AMOUNT)
 
         #variable instatiation
@@ -139,13 +138,13 @@ def loop():
         #shape:
         point_2d = calculate_2d_point_batch(sampling_tensor, srdf_extrinsic, srdf_intrinsic[0], SAMPLING_AMOUNT)
         point_2d = torch.reshape(point_2d, (point_2d.shape[0],point_2d.shape[1]*point_2d.shape[2],2))
+        
         #get the necessary depth map value and the corresponding ray for the next calculation
         #shape:
         #shape:
         start_time1 = time.time()
         srdf_masked_output = torch.unsqueeze(srdf_masked_output, 1)
         srdf_dmap_value = coordinate_lookup.lookup_value_at(point_2d, srdf_masked_output)
-        
         unsqueezed_srdf_rays_d = transpose_rays_tensor(srdf_torch_rays_d)
         srdf_ray_vector = coordinate_lookup.lookup_value_at(point_2d, unsqueezed_srdf_rays_d)
         print("--- Lookup runtime: %s seconds ---" % (time.time() - start_time1))
@@ -153,13 +152,9 @@ def loop():
         #shape:
         srdf_predicted_point = calculate_point_with_depth_value(srdf_origin, srdf_ray_vector, srdf_dmap_value)
         srdf_predicted_point = torch.reshape(srdf_predicted_point, (GROUP_SIZE, DMAP_POINT_BATCH_SIZE,SAMPLING_AMOUNT,3))
-        print("predicted point, this should be the same as the other cams: " + str(srdf_predicted_point))
-        
         #calculate the srdf
         #shape:
         step = calculate_srdf(sampling_tensor, srdf_origin, srdf_predicted_point)
-        print("srdf, müsste 0 sein: " + str(step))
-
         step = torch.norm(step, dim=3)
         step = apply_srdf_mask(step)
         srdf_consistency = calculate_srdf_consistency(step, SIGMA, GAMMA)
@@ -174,11 +169,11 @@ def loop():
         
 
         loss.backward()
-        # for group in adam.param_groups:
-        #     for idx, p in enumerate(group['params']):
-        #         if p.grad is not None:
-        #            # print(p.grad.flatten().shape)
-        #             writer.add_histogram("gradients " + str(idx), p.grad.flatten(), x)
+        for group in adam.param_groups:
+            for idx, p in enumerate(group['params']):
+                if p.grad is not None:
+                   # print(p.grad.flatten().shape)
+                    writer.add_histogram("gradients " + str(idx), p.grad.flatten(), x)
         
         writer.add_scalar("Loss/train", loss, x)
 
